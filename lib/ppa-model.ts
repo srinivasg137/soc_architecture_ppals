@@ -16,12 +16,12 @@ export const milliwattsToWatts=(milliwatts:number)=>milliwatts/1000;
 export const STARTER_POWER_W=milliwattsToWatts(20); // Rounded scale-only hypothesis, equal for A/B/C.
 export const STARTER_POWER_BUDGET_W=milliwattsToWatts(50); // Editable example constraint, not a source value.
 // FlooNoC Table III: 1.37 mm² NoC area over 32 tiles. Fig. 9(a) / VI-C:
-// NoC 3.5%, NoC + wide Xbar 6.9%, DMA 1.6% of tile logic.
-// Applying those proportions to the mean NoC area yields ~0.104 mm².
+// NoC 3.5%, NoC + wide Xbar 6.9%, DMA 5.3% of tile logic.
+// Applying those proportions to the mean NoC area yields ~0.149 mm².
 // This is an approximate occupied-logic scale, not a block floorplan footprint.
-export const AREA_REFERENCE={totalNocMm2:1.37,tiles:32,nocPercent:3.5,interconnectPercent:6.9,dmaPercent:1.6,url:'https://arxiv.org/html/2409.17606v2'} as const;
+export const AREA_REFERENCE={totalNocMm2:1.37,tiles:32,nocPercent:3.5,interconnectPercent:6.9,dmaPercent:5.3,url:'https://arxiv.org/html/2409.17606v2'} as const;
 export const referenceTransportAreaMm2=()=>AREA_REFERENCE.totalNocMm2/AREA_REFERENCE.tiles*(AREA_REFERENCE.interconnectPercent+AREA_REFERENCE.dmaPercent)/AREA_REFERENCE.nocPercent;
-export const STARTER_AREA_MM2=0.10; // Rounded scale-only estimate; equal for A/B/C.
+export const STARTER_AREA_MM2=0.15; // Rounded scale-only estimate; equal for A/B/C.
 export const STARTER_AREA_BUDGET_MM2=0.20; // Editable logic-area allowance, not a published limit.
 const initial=(power:number,area:number,timingRisk:number,routing:number,scalability:number):Assumption=>({overhead:10,bubbles:5,utilization:80,parallelEfficiency:90,power,area,timingRisk,routing,scalability,uncertainty:25,clockShortfall:10,trial:false,achievedFrequency:1,source:''});
 export const makeDefaults=():State=>({architectures:{wide:initial(STARTER_POWER_W,STARTER_AREA_MM2,3,4,3),fast:{...initial(STARTER_POWER_W,STARTER_AREA_MM2,5,2,2),achievedFrequency:2},parallel:initial(STARTER_POWER_W,STARTER_AREA_MM2,2,3,4)},target:40,powerBudget:STARTER_POWER_BUDGET_W,areaBudget:STARTER_AREA_BUDGET_MM2,cap:80,capEnabled:true,baseline:'wide',tab:'overview'});

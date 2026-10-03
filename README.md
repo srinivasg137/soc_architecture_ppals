@@ -42,19 +42,19 @@ Equal power is only a starting hypothesis. Voltage, activity, wire length, buffe
 
 | Option | Starter occupied logic-area estimate | Default ±25% scenario |
 | --- | ---: | ---: |
-| 512-bit at 1 GHz | 0.100 mm² | 0.075–0.125 mm² |
-| 256-bit at 2 GHz | 0.100 mm² | 0.075–0.125 mm² |
-| Two 256-bit engines at 1 GHz, aggregate | 0.100 mm² | 0.075–0.125 mm² |
+| 512-bit at 1 GHz | 0.150 mm² | 0.1125–0.1875 mm² |
+| 256-bit at 2 GHz | 0.150 mm² | 0.1125–0.1875 mm² |
+| Two 256-bit engines at 1 GHz, aggregate | 0.150 mm² | 0.1125–0.1875 mm² |
 
 The example **logic-area budget is 0.200 mm²**. Area inputs use comparable occupied logic/macro area; a standalone floorplan also needs whitespace and routing allowance. The lab does not predict that extra footprint.
 
-**Published scale reference:** [FlooNoC, Figure 9(a), section VI-C and Table III](https://arxiv.org/html/2409.17606v2), in 12 nm at 1.26 GHz. The NoC occupies 1.37 mm² across 32 tiles, a mean of 0.0428 mm² per tile. The tile breakdown reports 3.5% NoC, 6.9% NoC plus wide crossbar and 1.6% DMA. An approximate average transport-logic contribution follows:
+**Published scale reference:** [FlooNoC, Figure 9(a), section VI-C and Table III](https://arxiv.org/html/2409.17606v2), in 12 nm at 1.26 GHz. The NoC occupies 1.37 mm² across 32 tiles, a mean of 0.0428 mm² per tile. The tile breakdown reports 3.5% NoC, 6.9% NoC plus wide crossbar and 5.3% DMA. An approximate average transport-logic contribution follows:
 
 ```text
-(1.37 mm² / 32) × ((6.9 + 1.6) / 3.5) ≈ 0.104 mm²
+(1.37 mm² / 32) × ((6.9 + 5.3) / 3.5) ≈ 0.149 mm²
 ```
 
-The lab rounds this inference to 0.10 mm². The 0.20 mm² budget is an editable engineering allowance, not a published limit. The sensitivity interval is a scenario, not a statistical confidence interval or measured model accuracy.
+The lab rounds this inference to 0.15 mm². The 0.20 mm² budget is an editable engineering allowance, not a published limit. The sensitivity interval is a scenario, not a statistical confidence interval or measured model accuracy.
 
 The reference does not characterize the 256-bit, 2 GHz or dual-engine variants. Equal starter areas avoid assuming an area winner before implementation evidence. Enter different values when pipeline depth, FIFO capacity, duplicated control, drive strength and layout provide a basis. Exclude CPU cores, bulk memory and off-chip PHYs from this transport example. Both engines plus shared logic must be counted for option C.
 
