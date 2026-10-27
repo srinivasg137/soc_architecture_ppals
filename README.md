@@ -1,14 +1,24 @@
-# SoC Architecture Lab - Width vs Frequency
+# SoC PPALS — Srinivas Gaddam
 
-## Open the lab
+Personal SoC architecture articles, PCIe series and the **Width vs Frequency** interactive lab.
 
-[Open SoC Architecture Lab - Width vs Frequency](https://soc-ppa-tradeoff-lab.srinivasg137.chatgpt.site)
+## Website
 
-The live lab is public and opens without an owner sign-in.
+GitHub Pages address (after enabling Pages): https://srinivasg137.github.io/soc_architecture_ppals/
 
-[Source on GitHub](https://github.com/srinivasg137/soc_architecture_ppals)
+Publish from **Settings → Pages → Deploy from a branch → main → /docs → Save**.
 
-For a local copy, follow **Run locally** below.
+The complete static website is in `docs/`. It includes About, SoC Architecture Part 1, Part 1.1 Width vs Frequency, and PCIe Parts 1–4. Navigation uses relative links so the same files work on a custom domain. The articles are adapted web guides with links to available originals.
+
+## Custom domain
+
+The intended domain is `soc-ppals.com`; it is not registered or activated yet. Register it, verify ownership in GitHub, then configure it in repository Pages settings and add the GitHub Pages DNS records. Do not use the previous ChatGPT Sites DNS records for GitHub hosting.
+
+## Editing
+
+Edit the HTML, CSS and JavaScript in `docs/` and commit to main. No server or build is required for the portal. The original React lab source is retained in this repository. `pnpm build:pages` regenerates the old standalone lab and overwrites docs/index.html, so do not run it over this portal; build the lab separately and copy its output into docs/lab-app instead.
+
+## Original lab model and development reference
 
 ## What this lab compares
 
