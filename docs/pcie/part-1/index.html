@@ -1,1 +1,472 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>What really happens before a PCIe device becomes visible to software? | SoC PPALS</title><meta name="description" content="Follow the system from power and reset to link training, enumeration and driver binding."><meta name="theme-color" content="#102d31"><meta property="og:title" content="What really happens before a PCIe device becomes visible to software?"><meta property="og:description" content="Follow the system from power and reset to link training, enumeration and driver binding."><link rel="icon" href="../../favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../../style.css"><script defer src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a class="brand" href="../../" aria-label="SoC PPALS home"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button class="menutoggle" aria-expanded="false" aria-controls="nav">Menu</button><nav id="nav" aria-label="Main navigation"><a  href="../../">Home</a><a  href="../../soc-architecture/">SoC Architecture</a><a  href="../../width-vs-frequency/">Interactive lab</a><a aria-current=page href="../">PCIe series</a><a  href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 1</p><h1>What really happens before a PCIe device becomes visible to software?</h1><p class="lede">Follow the system from power and reset to link training, enumeration and driver binding.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Technical guide</span><button class="copylink">Copy link</button></div></section><div class="readinglayout"><aside class="toc"><b>IN THIS ARTICLE</b><a href="#s0">The complete journey</a><a href="#s1">Link bring up</a><a href="#s2">Software discovery</a><a href="#s3">Read the original article</a><a class="textlink" href="https://www.linkedin.com/pulse/what-really-happens-before-pcie-device-becomes-visible-gaddam-vh4xf">Read the original on LinkedIn ↗</a></aside><article class="prose"><section id="s0"><h2>The complete journey</h2><p>A GPU, SSD or network adapter can be electrically present while still invisible to software. Bringing it into use crosses several boundaries: power and reset, receiver detection, link training, configuration enumeration, driver binding and data movement.</p><div class="journey">Power & reset → Detect → Train → L0 → Enumerate → Driver</div></section><section id="s1"><h2>Link bring up</h2><p>Power and clock stability allow the ports to begin their work. Link training establishes communication across the lanes. Reaching L0 is an important physical link milestone, but it does not mean that software has discovered the Function or allocated its resources.</p></section><section id="s2"><h2>Software discovery</h2><p>Firmware and the operating system discover Functions through configuration access. Resource allocation and driver initialization follow. When bring up fails, identify the last boundary that has actually succeeded instead of treating the whole process as one event.</p></section><section id="s3"><h2>Read the original article</h2><p>This overview introduces the first published article. Continue on LinkedIn for the complete explanation and original figures.</p><a class="button " href="https://www.linkedin.com/pulse/what-really-happens-before-pcie-device-becomes-visible-gaddam-vh4xf">Read Part 1 on LinkedIn<span aria-hidden="true">↗</span></a></section><div class="endnote"><p>Explore the assumptions. Follow the evidence. Keep the system boundary visible.</p><a class="button secondary" href="../">Back to the PCIe series<span aria-hidden="true">↗</span></a></div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>What really happens before a PCIe device becomes visible to software? | SoC PPALS</title><meta content="Follow the system from power and reset to link training, enumeration and driver binding." name="description"/><meta content="#102d31" name="theme-color"/><meta content="What really happens before a PCIe device becomes visible to software?" property="og:title"/><meta content="Follow the system from power and reset to link training, enumeration and driver binding." property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a aria-current="page" href="../">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 1</p><h1>What really happens before a PCIe device becomes visible to software?</h1><p class="lede">Follow the system from power and reset to link training, enumeration and driver binding.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b><a href="#section-0">
+Stage 1 — Platform and PCIe Link Bring-Up
+</a><a href="#section-1">1. Power</a><a href="#section-2">2. Release Fundamental Reset</a><a href="#section-3">3. Detect an Electrical Partner</a><a href="#section-4">4. Train the PCIe Link</a><a href="#section-5">5. Reach L0 — Link Operational</a><a href="#section-6">
+Stage 2 — Firmware and OS Enumeration
+</a><a href="#section-7">6. Issue Configuration Transactions</a><a href="#section-8">7. Discover Functions</a><a href="#section-9">8. Build the Topology and Establish Routing IDs</a><a href="#section-10">9. Read IDs and Capabilities</a><a href="#section-11">10. Size and Assign BARs</a><a href="#section-12">11. Prepare Interrupt, Power and Error Services</a><a href="#section-13">
+Stage 3 — Driver Binding and Normal Operation
+</a><a href="#section-14">12. Match the Function to a Driver</a><a href="#section-15">13. Initialize the Device</a><a href="#section-16">14. Begin DMA, Interrupts and Normal Operation</a><a href="#section-17">Next Article — Why Won't the Link Reach L0?</a></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/what-really-happens-before-pcie-device-becomes-visible-gaddam-vh4xf">View original article ↗</a></p><figure>
+<!-- --> 
+
+<img alt="What really happens before a PCIe device becomes visible to software?" decoding="async" loading="lazy" src="../../article-images/56076c59c8af8089.jpg"/>
+
+
+<!-- --> </figure>
+<p>
+<br/>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/6c76457363fb95f5.jpg"/>
+ </figure>
+
+
+<p>
+<span>You install a GPU, NVMe SSD or network adapter. Seconds later, Linux or Windows lists it. Between those two moments, platform hardware, PCIe link logic, firmware, the OS and a device driver execute a carefully ordered hand-off.</span>
+</p>
+
+
+<p>
+<strong>POWER / RESET  →  DETECT  →  TRAIN  →  L0  →  ENUMERATE  →  BIND DRIVER  →  DMA</strong>
+</p>
+
+
+<p>
+<span>A device can be electrically present and still be completely invisible to software. This opening article follows the complete path at overview level; later episodes will stop at the most interesting states and transactions.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/aa69b04542092791.jpg"/>
+<figcaption>
+<span>Figure 1. Conceptual PCIe bring-up sequence; not a cycle-accurate timing diagram. Virtual Functions appear only after SR-IOV is enabled.</span>
+</figcaption>
+</figure>
+
+
+<h2 id="section-0">
+<span>Stage 1 — Platform and PCIe Link Bring-Up</span>
+</h2>
+
+
+<h3 id="section-1"><span>1. Power</span></h3>
+
+
+<p>
+<span>The platform supplies the slot and board power needed by the Root Complex and Endpoint. An add-in card may receive 12 V, 3.3 V and optional auxiliary power; board-level regulators then create lower internal rails. The reference-clock architecture must also be ready for the chosen platform design.</span>
+</p>
+
+
+<p>
+<span>At this point, electrical power exists but no usable PCIe Link exists. Power sequencing is a platform responsibility, not a task performed solely by the PCIe PHY.</span>
+</p>
+
+
+<h3 id="section-2"><span>2. Release Fundamental Reset</span></h3>
+
+
+<p>
+<span>A conventional PCIe add-in card receives PERST#, the active-low sideband signal associated with Fundamental Reset.</span>
+</p>
+
+
+<p>
+<span>a.   LOW — reset asserted</span>
+</p>
+
+
+<p>
+<span>b.   HIGH — reset de-asserted</span>
+</p>
+
+
+<p>
+<span>During cold power-up, the platform holds PERST# low until the required power and clock conditions are satisfied, then drives it high to release the Endpoint. A HIGH → LOW → HIGH waveform represents a later reset pulse; the essential rule is unchanged: LOW means reset is active.</span>
+</p>
+
+
+<p>
+<span>Embedded and integrated implementations may realize Fundamental Reset through platform-specific controls rather than a card-edge PERST# pin.</span>
+</p>
+
+
+<h3 id="section-3"><span>3. Detect an Electrical Partner</span></h3>
+
+
+<p>
+<span>After reset release, the LTSSM—Link Training and Status State Machine, enters the Detect process. Each transmitter tests whether the far end presents a valid PCIe receiver termination on the candidate lanes.</span>
+</p>
+
+
+<p>
+<span>This is an electrical measurement. TS1/TS2 Ordered Sets, Configuration Requests and normal TLPs are not being exchanged yet. A failed Receiver Detect may indicate an absent or unpowered Endpoint, an open lane, incorrect termination or a board-level signal-integrity problem.</span>
+</p>
+
+
+<h3 id="section-4"><span>4. Train the PCIe Link</span></h3>
+
+
+<p>
+<span>Once receiver termination is detected, both ports exchange TS1 and TS2 Ordered Sets while the LTSSM progresses through states such as Polling and Configuration. Initial Link establishment begins at the 2.5 GT/s signaling rate for compatibility; the Link can later retrain toward a mutually supported higher rate.</span>
+</p>
+
+
+<p>
+<span>Training establishes or confirms:</span>
+</p>
+
+
+<p>
+<span>a.   Link and lane numbering</span>
+</p>
+
+
+<p>
+<span>b.   Negotiated Link width</span>
+</p>
+
+
+<p>
+<span>c.   Lane polarity and lane-reversal handling</span>
+</p>
+
+
+<p>
+<span>d.   Lane-to-lane de-skew</span>
+</p>
+
+
+<p>
+<span>e.   Supported data rates</span>
+</p>
+
+
+<p>
+<span>f.   Equalization behavior for higher data rates</span>
+</p>
+
+
+<p>
+<span>Link training is cooperative. A nominally ×16 design can reach L0 at a reduced width or speed if the available lanes or signal conditions do not support the intended configuration. Therefore, “Link Up” does not by itself prove that expected performance was achieved.</span>
+</p>
+
+
+<h3 id="section-5"><span>5. Reach L0 — Link Operational</span></h3>
+
+
+<p>
+<span>L0 is the normal operational state of the LTSSM. The Physical Layer can now carry PCIe traffic, while Data Link Layer initialization establishes items such as sequence-number state and flow-control credits.</span>
+</p>
+
+
+<p>
+<span>The practical hand-off to software occurs only when the Link is usable and the Data Link Layer is active. Firmware or the OS can then issue Configuration Requests through the Root Complex.</span>
+</p>
+
+
+<h2 id="section-6">
+<span>Stage 2 — Firmware and OS Enumeration</span>
+</h2>
+
+
+<p>
+<span>Enumeration is a system-software operation. The Root Complex supplies the configuration-access mechanism, and Endpoints respond to requests; neither the PHY nor the Endpoint independently decides the system topology or resource map.</span>
+</p>
+
+
+<p>
+<span>a.   </span><strong>BIOS/UEFI</strong><span> commonly performs pre-boot discovery and resource allocation.</span>
+</p>
+
+
+<p>
+<span>b.     </span><strong>The OS PCI subsystem</strong><span> discovers or validates the hierarchy and assumes runtime ownership.</span>
+</p>
+
+
+<p>
+<span>c.     </span><strong>Hot-plug or rescan events</strong><span> can trigger enumeration after boot.</span>
+</p>
+
+
+<h3 id="section-7"><span>6. Issue Configuration Transactions</span></h3>
+
+
+<p>
+<span>System software accesses PCIe Configuration Space through a host bridge or Root Complex, commonly using an ECAM mapping on modern systems. The Root Complex converts those accesses into Configuration Read and Write TLPs.</span>
+</p>
+
+
+<p>
+<span>a.     Type 0 requests target Functions on the addressed bus.</span>
+</p>
+
+
+<p>
+<span>b.     Type 1 requests are routed across bridges toward a downstream bus and are converted as the request reaches the target bus.</span>
+</p>
+
+
+<p>
+<span>Enumeration commonly probes the Vendor ID first. A value of 0xFFFF indicates that no Function is present at that location from software’s point of view.</span>
+</p>
+
+
+<h3 id="section-8"><span>7. Discover Functions</span></h3>
+
+
+<p>
+<span>A PCIe Device can implement one or more Functions. Software first probes Function 0 and checks the multifunction indication before probing additional conventional Function numbers. Alternative Routing-ID Interpretation (ARI) can extend the Function-number space when supported and enabled.</span>
+</p>
+
+
+<p>
+<span>Each Function owns its own Configuration Space and represents a separately enumerable logical service. SR-IOV Virtual Functions are different: they do not appear during initial Physical Function discovery. They become visible only after SR-IOV is enabled and the PF exposes the requested VFs.</span>
+</p>
+
+
+<h3 id="section-9"><span>8. Build the Topology and Establish Routing IDs</span></h3>
+
+
+<p>
+<span>Every discovered Function is addressed using a Segment:Bus:Device:Function identity—often shortened to BDF when the Segment is implicit.</span>
+</p>
+
+
+<p>
+<span>Software assigns bus-number ranges to bridges and records the resulting hierarchy. Device and Function values follow from the routing topology and the Functions present; software does not simply write a complete BDF into an Endpoint register.</span>
+</p>
+
+
+<p>
+<span>This routing identity is then used for later Configuration Requests and for the OS device model—for example, 0000:03:00.0 on Linux.</span>
+</p>
+
+
+<h3 id="section-10"><span>9. Read IDs and Capabilities</span></h3>
+
+
+<p>
+<span>Software reads the Configuration Header and capability structures for each Function. Important fields include:</span>
+</p>
+
+
+<p>
+<span>a.     Vendor ID, Device ID and Revision ID</span>
+</p>
+
+
+<p>
+<span>b.     Class Code, Subclass and Programming Interface</span>
+</p>
+
+
+<p>
+<span>c.     Header Type and subsystem IDs</span>
+</p>
+
+
+<p>
+<span>d.     BAR definitions</span>
+</p>
+
+
+<p>
+<span>e.     Standard and extended capability pointers</span>
+</p>
+
+
+<p>
+<span>The capability chains may advertise PCI Express controls, power management, MSI/MSI-X, AER, Resizable BAR, SR-IOV, ACS, ATS, PRI, PASID and many other features. Discovery tells software that a capability exists; it does not mean the capability is already enabled.</span>
+</p>
+
+
+<h3 id="section-11"><span>10. Size and Assign BARs</span></h3>
+
+
+<p>
+<span>Base Address Registers describe the address windows through which software accesses device registers, queues, memory apertures or onboard memory.</span>
+</p>
+
+
+<p>
+<span>With the traditional mechanism, software disables relevant decoding, writes all ones to a BAR and reads back the implemented mask to determine size and type. It then allocates a non-conflicting, correctly aligned address range and programs the BAR. A 64-bit BAR consumes two adjacent 32-bit BAR locations.</span>
+</p>
+
+
+<p>
+<span>Bridge windows must cover the resources assigned below them. Firmware may establish the initial map; the OS may preserve it or rebalance resources when platform policy allows. Resizable BAR is a separate capability that permits software to select among sizes explicitly advertised by the device.</span>
+</p>
+
+
+<h3 id="section-12"><span>11. Prepare Interrupt, Power and Error Services</span></h3>
+
+
+<p>
+<span>After reading the generic capabilities, firmware and the OS PCI core can establish platform-level policy for interrupt routing, PCIe power management, ASPM, Advanced Error Reporting, access control and resource sizing.</span>
+</p>
+
+
+<p>
+<span>This stage crosses an ownership boundary. Capability discovery occurs during enumeration, but a device driver normally requests and enables the final MSI or MSI-X vectors and completes device-specific power and error configuration after binding.</span>
+</p>
+
+
+<h2 id="section-13">
+<span>Stage 3 — Driver Binding and Normal Operation</span>
+</h2>
+
+
+<h3 id="section-14"><span>12. Match the Function to a Driver</span></h3>
+
+
+<p>
+<span>Once a Function exists in the OS device model, the operating system searches for a compatible driver. Matching can use Vendor and Device IDs, subsystem IDs, Class Code and driver-specific match data.</span>
+</p>
+
+
+<p>
+<span>Discovery and driver binding are deliberately separate. A Function can be visible in the OS and have resources reserved even when no suitable driver is installed. In that state, the device is present—but not yet useful.</span>
+</p>
+
+
+<h3 id="section-15"><span>13. Initialize the Device</span></h3>
+
+
+<p>
+<span>The selected driver performs device-specific initialization. Depending on the device, it may:</span>
+</p>
+
+
+<p>
+<span>a.     Enable the Function and reserve its BAR resources</span>
+</p>
+
+
+<p>
+<span>b.     Map MMIO regions</span>
+</p>
+
+
+<p>
+<span>c.     Reset device-internal engines and load firmware</span>
+</p>
+
+
+<p>
+<span>d.     Configure DMA addressability and IOMMU mappings</span>
+</p>
+
+
+<p>
+<span>e.     Allocate descriptor rings or command queues</span>
+</p>
+
+
+<p>
+<span>f.     Request MSI or MSI-X vectors</span>
+</p>
+
+
+<p>
+<span>g.     Enable Bus Mastering when DMA resources are ready</span>
+</p>
+
+
+<p>
+<span>h.     Start the device’s processing engines</span>
+</p>
+
+
+<p>
+<span>Enumeration makes the Function addressable. The driver gives it operational meaning.</span>
+</p>
+
+
+<h3 id="section-16"><span>14. Begin DMA, Interrupts and Normal Operation</span></h3>
+
+
+<p>
+<span>The device can now exchange data with system memory:</span>
+</p>
+
+
+<p>
+<span>a.     The driver prepares buffers and descriptors.</span>
+</p>
+
+
+<p>
+<span>b.     The OS DMA/IOMMU subsystem supplies DMA addresses that the device is permitted to use.</span>
+</p>
+
+
+<p>
+<span>c.     The device issues PCIe Memory Read and Memory Write Requests.</span>
+</p>
+
+
+<p>
+<span>d.     The Root Complex routes those requests between the PCIe hierarchy and the host memory system.</span>
+</p>
+
+
+<p>
+<span>The CPU does not copy every payload manually. When work completes, the device can signal MSI or MSI-X. At the PCIe protocol level, that interrupt is delivered as a Memory Write Request to a configured message address—not through a dedicated interrupt wire.</span>
+</p>
+
+
+<p>
+<strong>The journey is complete: powered hardware has become an enumerated, driver-controlled PCIe Function capable of moving real data.</strong>
+</p>
+
+
+<h3 id="section-17"><span>Next Article — Why Won't the Link Reach L0?</span></h3>
+
+
+<p>
+<span>In the next article, we will freeze the sequence between Receiver Detect and L0 and step inside the LTSSM:</span>
+</p>
+
+
+<p>
+<span>i.     How can a transmitter detect a receiver before any packets are exchanged?</span>
+</p>
+
+
+<p>
+<span>ii.     What exactly happens in Detect.Quiet and Detect.Active?</span>
+</p>
+
+
+<p>
+<span>iii.     Why does Link initialization begin at 2.5 GT/s before attempting higher rates?</span>
+</p>
+
+
+<p>
+<span>iv.     What information is carried in TS1 and TS2 Ordered Sets?</span>
+</p>
+
+
+<p>
+<span>v.     How are lane numbers, polarity handling and final Link width resolved—and why can ×16 fall back to ×8?</span>
+</p>
+
+
+<p>
+<span>vi.     Why can a Link loop through Polling, Configuration and Recovery, and when is the Data Link Layer finally ready for Configuration TLPs?</span>
+</p>
+
+
+<p>
+<span>The device has power. PERST# has been released. Both ports detect an electrical partner.</span>
+</p>
+
+
+<p>
+<strong>Yet the Link is still not alive. What must the two ports agree on before either can transmit the first real TLP?</strong>
+</p>
+</article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>

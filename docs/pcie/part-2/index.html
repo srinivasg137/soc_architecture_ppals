@@ -1,1 +1,516 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Why won’t the PCIe Link reach L0? | SoC PPALS</title><meta name="description" content="Separate receiver detection, lane configuration, speed change and equalization failures."><meta name="theme-color" content="#102d31"><meta property="og:title" content="Why won’t the PCIe Link reach L0?"><meta property="og:description" content="Separate receiver detection, lane configuration, speed change and equalization failures."><link rel="icon" href="../../favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../../style.css"><script defer src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a class="brand" href="../../" aria-label="SoC PPALS home"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button class="menutoggle" aria-expanded="false" aria-controls="nav">Menu</button><nav id="nav" aria-label="Main navigation"><a  href="../../">Home</a><a  href="../../soc-architecture/">SoC Architecture</a><a  href="../../width-vs-frequency/">Interactive lab</a><a aria-current=page href="../">PCIe series</a><a  href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 2</p><h1>Why won’t the PCIe Link reach L0?</h1><p class="lede">Separate receiver detection, lane configuration, speed change and equalization failures.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Technical guide</span><button class="copylink">Copy link</button></div></section><div class="readinglayout"><aside class="toc"><b>IN THIS ARTICLE</b><a href="#s0">Start with the symptom</a><a href="#s1">Read the LTSSM as evidence</a><a href="#s2">Separate width from speed</a><a href="#s3">Connect hardware and software</a><a href="#s4">Continue with the full article</a><a class="textlink" href="https://www.linkedin.com/pulse/why-wont-pcie-link-reach-l0-srinivas-gaddam-4cyxf">Read the original on LinkedIn ↗</a></aside><article class="prose"><section id="s0"><h2>Start with the symptom</h2><p>Power is good, reset is released and Receiver Detect succeeds. Yet the expected Gen6 x16 link trains at x8, remains at a lower speed, or repeatedly enters Recovery. Those observations point to different boundaries inside training.</p><p>The useful question is: what is the last thing the link definitely proved?</p></section><section id="s1"><h2>Read the LTSSM as evidence</h2><p>The Link Training and Status State Machine turns an electrical connection into an operational link. Detect establishes receiver presence. Polling establishes recognizable training exchange. Configuration establishes the link’s lane arrangement. Recovery handles retraining and speed related work.</p><p>Do not infer the negotiated width or speed from capabilities alone. Compare supported capability with current link status.</p></section><section id="s2"><h2>Separate width from speed</h2><div class="tablewrap"><table><tr><th>Observation</th><th>Investigation</th></tr><tr><td>Expected x16, negotiated x8</td><td>Detected lanes, connectivity and lane configuration</td></tr><tr><td>Expected higher speed, stable lower speed</td><td>Speed change and equalization evidence</td></tr><tr><td>Repeated Recovery</td><td>Training sequence, signal quality and error correlation</td></tr></table></div><p>Capture the sequence of states and transitions. A single snapshot can hide a repeated failure loop.</p></section><section id="s3"><h2>Connect hardware and software</h2><p>Correlate port status with PHY observations and protocol traces. Keep link training separate from Data Link initialization and configuration enumeration. A later software discovery failure does not automatically mean the LTSSM failed.</p></section><section id="s4"><h2>Continue with the full article</h2><p>The published article follows Detect, Polling, Configuration and Recovery in more detail, including the Gen6 and Gen7 perspective.</p><a class="button " href="https://www.linkedin.com/pulse/why-wont-pcie-link-reach-l0-srinivas-gaddam-4cyxf">Read Part 2 on LinkedIn<span aria-hidden="true">↗</span></a></section><div class="endnote"><p>Explore the assumptions. Follow the evidence. Keep the system boundary visible.</p><a class="button secondary" href="../">Back to the PCIe series<span aria-hidden="true">↗</span></a></div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Why Won’t the PCIe Link Reach L0? | SoC PPALS</title><meta content="Separate receiver detection, lane configuration, speed change and equalization failures." name="description"/><meta content="#102d31" name="theme-color"/><meta content="Why won’t the PCIe Link reach L0?" property="og:title"/><meta content="Separate receiver detection, lane configuration, speed change and equalization failures." property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a aria-current="page" href="../">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 2</p><h1>Why Won’t the PCIe Link Reach L0?</h1><p class="lede">Separate receiver detection, lane configuration, speed change and equalization failures.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b><a href="#section-0">
+What this article will cover
+</a><a href="#section-1">
+1. Receiver Detect: is an electrical partner present?
+</a><a href="#section-2">
+2. Polling: can the two ends hear and understand each other?
+</a><a href="#section-3">A. Polling.Active</a><a href="#section-4">B. Polling.Compliance</a><a href="#section-5">C. Polling.Configuration</a><a href="#section-6">
+3. Configuration: how do physical lanes become one logical Link?
+</a><a href="#section-7">A. Configuration.Linkwidth.Start and Configuration.Linkwidth.Accept</a><a href="#section-8">B. Configuration.Lanenum.Wait and Configuration.Lanenum.Accept</a><a href="#section-9">C. Configuration.Complete and Configuration.Idle</a><a href="#section-10">Lane reversal and polarity inversion: two different mechanisms</a><a href="#section-11">
+4. L0: a milestone, not the end of bring-up
+</a><a href="#section-12">
+5.Recovery: why a healthy Link may leave L0
+</a><a href="#section-13">A. Recovery.RcvrLock</a><a href="#section-14">B. Recovery.RcvrCfg</a><a href="#section-15">C. Recovery.Speed</a><a href="#section-16">D. Recovery.Idle</a><a href="#section-17">E. Recovery.Equalization — Phases 0 through 3</a><a href="#section-18">Both ends support Gen6. Why is the Link still running at Gen5 speed?</a><a href="#section-19">
+What changes in PCIe Gen6 Link training?
+</a><a href="#section-20">A. Flit Mode is part of the link-training story</a><a href="#section-21">B. TS0 — a new training character for 64 GT/s Flit-mode equalization</a><a href="#section-22">C. Ordered Sets must survive a much higher BER environment</a><a href="#section-23">
+Gen6 L0p: dynamic width change is not failed Link training
+</a><a href="#section-24">
+Practical debug cases: how to narrow the problem
+</a><a href="#section-25">
+Next Part: The Link Is Up. Why Is the Device Still Invisible?
+</a></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/why-wont-pcie-link-reach-l0-srinivas-gaddam-4cyxf">View original article ↗</a></p><figure>
+<!-- --> 
+
+<img alt="Why Won’t the PCIe Link Reach L0?" decoding="async" loading="lazy" src="../../article-images/fcd860710a31f3db.jpg"/>
+
+
+<!-- --> </figure>
+<p>
+<span>In the previous article, I covered the high-level overview of the events before PCIe EP becomes visible to software. In this article, I will deep dive into the link up and LTSSM in detail, so this article is going to be little lengthy. This post will cover the details of link up and also gives practical bring up perspective.</span>
+</p>
+
+
+<p>
+<strong>The Link is connected. But what Link did you actually get?</strong>
+</p>
+
+
+<p>
+<em>Power is good, reset is released and Receiver Detect succeeds. A Gen6 x16 accelerator should ultimately reach 64 GT/s x16, yet one platform trains at x8, another remains at 32 GT/s, and a third keeps cycling through Recovery and Equalization. These symptoms can look similar from software, but they point to different failure boundaries inside Link training. The fastest way to narrow them is not to memorize the LTSSM. At each stage, ask: what is the last thing the Link definitely proved? This article follows that question from Detect through Polling, configuration, L0, speed change and equalization, with a Gen6/Gen7 bring-up perspective.</em>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/e1873865d54a0a5b.jpg"/>
+ </figure>
+
+<hr/>
+
+<h2 id="section-0">
+<span>What this article will cover</span>
+</h2>
+
+
+<p>
+<span>How a PCIe Link progresses from Receiver Detect through Polling and Configuration before reaching L0.</span>
+</p>
+
+
+<p>
+<strong>What is the LTSSM really trying to do?</strong>
+</p>
+
+
+<p>
+<span>LTSSM (Link Training and Status State Machine) is the Physical-Layer state machine that turns an electrical connection into an operational Link. The two Ports do not assume that a healthy Gen6 x16 Link exists; they prove it in stages: receiver present → training recognizable → lanes formed and numbered → width established → higher speed attempted → equalization succeeds where required → stable L0.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/c9dc055ad6aa129c.jpg"/>
+ </figure>
+
+
+<p>
+<span>The above Figure shows the main bring-up path and important side branches (not every transition is shown). Gen6 adds Flit Mode negotiation, TS0, L0p and revised Ordered-Set behavior, but the same last-known-good method still applies.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-1">
+<span>1. Receiver Detect: is an electrical partner present?</span>
+</h2>
+
+
+<p>
+<span>Detect is where “device present” becomes an electrical question. Normal TLPs, DLLPs and software configuration accesses are not the mechanism used to answer it.</span>
+</p>
+
+
+<p>
+<strong>A. Detect.Quiet : </strong><span>Detect.Quiet is the quiet/retry part of Detect. The transmitter remains in Electrical Idle, and if the Port entered Detect from a higher rate the PHY returns to the 2.5 GT/s operating-rate baseline.The actual Receiver Detect operation follows in Detect.Active.</span>
+</p>
+
+
+<p>
+<strong>B. Detect.Active : </strong><span>Detect.Active performs Receiver Detection on unconfigured lanes that may participate in the Link. It is an electrical termination check, not a packet exchange. A lane that fails Detect is not used in the initially configured Link. So “16 routed lanes” and “16 LTSSM-eligible lanes” are different facts.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/170b2d1c82600d77.jpg"/>
+ </figure>
+
+
+<p>
+<em>C. Debug focus: x16 hardware trains narrower</em>
+</p>
+
+
+<p>
+<em>First check whether all intended lanes were eligible for Link formation: per-lane Receiver Detect, platform bifurcation, routing/connector continuity, termination/PHY setup, reset/refclk readiness and any retimer segment in the path.</em>
+</p>
+
+
+<p>
+<em>Passing Receiver Detect proves electrical presence, not Gen6/Gen7 margin; a lane can detect successfully and fail later during training or equalization.</em>
+</p>
+
+
+<p>
+<em>Why does a Gen6/Gen7 Link start at 2.5 GT/s?</em>
+</p>
+
+
+<p>
+<em>PCIe begins initial training from the 2.5 GT/s baseline for compatibility. Higher rates are reached later through Recovery.Speed and equalization.</em>
+</p>
+
+<hr/>
+
+<h2 id="section-2">
+<span>2. Polling: can the two ends hear and understand each other?</span>
+</h2>
+
+
+<p>
+<span>Polling moves the Link from simple electrical presence to recognizable PCIe training traffic. Its main substates are Polling.Active, Polling.Compliance and Polling.Configuration. Polling happens by exchanging TS1, TS2 ordered sets.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/04bb7ecf1431da28.jpg"/>
+ </figure>
+
+
+<h3 id="section-3"><span>A. Polling.Active</span></h3>
+
+
+<p>
+<span>Polling.Active establishes receiver lock and recognizable PCIe training traffic. The transmitter sends </span><strong>TS1 Ordered Sets</strong><span> on the lanes that detected a receiver, with Link and Lane Numbers set to PAD.</span>
+</p>
+
+
+<p>
+<span>To make forward progress, the receiver must recognize the required consecutive </span><strong>TS1 or TS2</strong><span> training sequences. Therefore, TS1 is the transmitted training sequence for this substate, although TS2 may be observed from a partner that has already progressed toward Polling.Configuration.</span>
+</p>
+
+
+<h3 id="section-4"><span>B. Polling.Compliance</span></h3>
+
+
+<p>
+<span>Polling.Compliance is the compliance/test branch rather than the normal Link-formation path. The transmitter sends the applicable </span><strong>compliance pattern</strong><span>, not normal TS1/TS2 Link-training traffic. If the DUT enters this state unexpectedly, check compliance controls, straps and test stimulus.</span>
+</p>
+
+
+<h3 id="section-5"><span>C. Polling.Configuration</span></h3>
+
+
+<p>
+<span>In Polling.Configuration, the transmitter sends </span><strong>TS2 Ordered Sets</strong><span> with </span><strong>Link Number = PAD and Lane Number = PAD</strong><span>. This substate prepares both Ports to enter the main Configuration state; actual Link-number and Lane-number establishment occurs later during Configuration.</span>
+</p>
+
+
+<p>
+<span>Any required polarity inversion must be completed before leaving Polling.Configuration, although the receiver is permitted to detect and handle the inversion earlier, including during Polling.Active.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-6">
+<span>3. Configuration: how do physical lanes become one logical Link?</span>
+</h2>
+
+
+<p>
+<span>Configuration turns the Receiver-detected lanes into one logical Link and establishes its width and lane identity.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/f6e63787e2de593f.jpg"/>
+ </figure>
+
+
+<h3 id="section-7"><span>A. Configuration.Linkwidth.Start and Configuration.Linkwidth.Accept</span></h3>
+
+
+<p>
+<span>When Configuration begins, the Link does not yet have final logical Lane numbers. The first task is to determine which Receiver-detected lanes can form one Link and establish a Link Number for that group.</span>
+</p>
+
+
+<p>
+<span>During initial training, the Downstream Port leads this process. In Configuration.Linkwidth.Start, it transmits TS1 Ordered Sets on candidate lanes with a selected </span><strong>non-PAD Link Number</strong><span>, while the </span><strong>Lane Number remains PAD</strong><span>. The Upstream Port responds with the selected Link Number, still with Lane Number set to PAD.</span>
+</p>
+
+
+<p>
+<span>Only lanes that detected a Receiver during the most recent Detect process are eligible for the initially configured Link.</span>
+</p>
+
+
+<p>
+<span>In Configuration.Linkwidth.Accept, lanes returning the expected Link Number can be grouped into a valid Link. The Downstream Port then assigns unique, non-PAD logical Lane Numbers, sequentially from </span><strong>0 to N−1</strong><span>, to the participating lanes. Lanes that cannot join the selected group remain outside the configured Link.</span>
+</p>
+
+
+<p>
+<span>This is one reason a physically x16-capable interface can train as x8: Receiver Detect may succeed on many lanes, but Configuration must still form a valid multi-lane group.</span>
+</p>
+
+
+<h3 id="section-8"><span>B. Configuration.Lanenum.Wait and Configuration.Lanenum.Accept</span></h3>
+
+
+<p>
+<span>The Lanenum substates make both Ports converge on the </span><strong>logical ordering</strong><span> of the selected lanes.</span>
+</p>
+
+
+<p>
+<span>TS1 Ordered Sets now carry the selected Link Number together with non-PAD Lane Numbers. The receiving Port checks the proposed numbering and returns the corresponding Link/Lane information. These states also allow the two Ports to settle on a valid width rather than reacting immediately to transient lane errors or lane-to-lane skew.</span>
+</p>
+
+
+<p>
+<span>If supported lane reversal is used, physical lane order does not have to equal logical Lane order. What matters is that both Ports establish a consistent logical mapping from Lane 0 through Lane N−1.</span>
+</p>
+
+
+<p>
+<span>If the proposed mapping cannot converge into a valid Link, the Link may be re-evaluated with a smaller valid lane group. If no valid configuration can be established, the LTSSM can return to Detect.</span>
+</p>
+
+
+<p>
+<span>This is why a lane-mapping problem may appear as a width problem even when Receiver Detect succeeded on every physical lane.</span>
+</p>
+
+
+<h3 id="section-9"><span>C. Configuration.Complete and Configuration.Idle</span></h3>
+
+
+<p>
+<span>Once width and Lane numbering have converged, Configuration.Complete changes the purpose of the training exchange from </span><strong>establishing</strong><span> the Link to </span><strong>confirming</strong><span> it.</span>
+</p>
+
+
+<p>
+<span>The Ports transmit </span><strong>TS2 Ordered Sets using the established non-PAD Link and Lane Numbers</strong><span>. Received TS2s are checked for the expected Link/Lane mapping and applicable training information. Supported data-rate information advertised during training also provides information needed for subsequent higher-speed operation.</span>
+</p>
+
+
+<p>
+<span>The LTSSM then enters Configuration.Idle, where the configured lanes complete the required generation-specific handoff before entering L0.</span>
+</p>
+
+
+<p>
+<span>At this point the Physical Layer has established a Link with a definite </span><strong>configured width and logical Lane mapping</strong><span>. It does not necessarily mean that the Link is already operating at its maximum supported speed. On the conventional initial-training path, Link formation begins from the 2.5 GT/s baseline; higher mutually supported rates are reached later through Recovery and, where required, Equalization.</span>
+</p>
+
+
+<p>
+<em>D. Practical debug case: why did x16 become x8?</em>
+</p>
+
+
+<p>
+<em>The phrase “x16 device” can hide several different facts:</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>the package/controller may implement 16 lanes,</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>the board may route 16 lanes,</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>the platform may bifurcate them into multiple independent Links,</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>Receiver Detect may succeed on fewer than 16 lanes,</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>the final negotiated width may therefore be narrower,</em>
+</p>
+
+
+<p>
+<strong>• </strong><em>later power-management behavior such as Gen6 L0p may temporarily reduce active lanes without changing the original Link formation.</em>
+</p>
+
+
+<p>
+<em>When a Link is downconfigured, unused transmitter lanes are placed in Electrical Idle. Those lanes do not take part in a later rate change while they remain outside the configured Link.</em>
+</p>
+
+
+<h3 id="section-10"><span>Lane reversal and polarity inversion: two different mechanisms</span></h3>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/ecfe7dd6ff54a5e8.jpg"/>
+ </figure>
+
+
+<p>
+<em>Any required polarity inversion must be completed before leaving Polling.Configuration.</em>
+</p>
+
+<hr/>
+
+<h2 id="section-11">
+<span>4. L0: a milestone, not the end of bring-up</span>
+</h2>
+
+
+<p>
+<span>L0 is the normal operational LTSSM state, but Physical-Link readiness and Data-Link readiness are separate milestones:</span>
+</p>
+
+
+<p>
+<span>
+</span></p><ul>
+<li><span>LTSSM establishes an operational Physical Link.</span></li>
+<li><span>Then the Data Link Layer performs its own initialization before the Link is fully ready for normal higher-layer traffic.</span></li>
+</ul>
+
+<p></p>
+
+
+<p>
+<span>Controllers often expose both statuses; the Physical Link can be up while Data Link initialization is still progressing.</span>
+</p>
+
+
+<h2 id="section-12">
+<span>5.Recovery: why a healthy Link may leave L0</span>
+</h2>
+
+
+<p>
+<span>Recovery is a normal control path used for re-lock, retraining, speed changes and equalization. The useful debug questions are why the Link entered Recovery and whether it returned to L0 as expected.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/18b9617ce0f9da0f.jpg"/>
+ </figure>
+
+
+<h3 id="section-13"><span>A. Recovery.RcvrLock</span></h3>
+
+
+<p>
+<span>In Recovery.RcvrLock, the receiver re-establishes or confirms training lock while the transmitter continuously sends TS1 Ordered Sets on all configured lanes. At data rates above 2.5 GT/s, an EIEOS is inserted after every 32 TS1 Ordered Sets. SKP Ordered Sets are also transmitted as required for clock compensation at all data rates.</span>
+</p>
+
+
+<h3 id="section-14"><span>B. Recovery.RcvrCfg</span></h3>
+
+
+<p>
+<span>In Recovery.RcvrCfg, both Ports exchange TS2 Ordered Sets to reconfirm the established Link configuration. With no pending speed change, the Link can proceed toward Recovery.Idle; with an agreed speed change, it proceeds to Recovery.Speed.</span>
+</p>
+
+
+<h3 id="section-15"><span>C. Recovery.Speed</span></h3>
+
+
+<p>
+<span>Recovery.Speed performs an agreed signaling-rate transition. Configured lanes enter Electrical Idle, the PHY changes rate, and training resumes through Recovery.RcvrLock at the new rate. If lock cannot be established, Recovery may use Recovery.Speed again to fall back to a lower or previously operating rate.</span>
+</p>
+
+
+<h3 id="section-16"><span>D. Recovery.Idle</span></h3>
+
+
+<p>
+<span>Recovery.Idle is the final handoff before returning to L0. Repeatedly reaching Idle and then re-entering Recovery suggests that the attempted operating point is not stable.</span>
+</p>
+
+
+<h3 id="section-17"><span>E. Recovery.Equalization — Phases 0 through 3</span></h3>
+
+
+<p>
+<span>Trainable equalization is used at 8.0 GT/s and above to compensate for the actual transmitter-channel-receiver path. Recovery.Equalization has phases 0–3. Exact presets/coefficient exchanges, Ordered Sets and completion rules are generation-specific; the most useful debug clue is which phase and direction fails.</span>
+</p>
+
+<hr/>
+
+<h3 id="section-18"><span>Both ends support Gen6. Why is the Link still running at Gen5 speed?</span></h3>
+
+
+<p>
+<span>Maximum capability is only the upper bound. Compare maximum capability, Target Link Speed, current speed and negotiated width before blaming software.</span>
+</p>
+
+
+<p>
+<span>Possible causes include channel loss/reflections/crosstalk, TX/RX equalization behavior, retimers, refclk/jitter margin, Ordered-Set or speed-change logic, or platform policy. The LTSSM trace tells you which area to investigate first.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-19">
+<span>What changes in PCIe Gen6 Link training?</span>
+</h2>
+
+
+<p>
+<span>PCIe 6.0 raises the rate to 64 GT/s using PAM4. Flit Mode, lightweight FEC, strong CRC and Link-level retry address the higher raw-error environment, while Link training must still establish a reliable high-speed channel.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/2b309a3b01c4895a.jpg"/>
+ </figure>
+
+
+<h3 id="section-20"><span>A. Flit Mode is part of the link-training story</span></h3>
+
+
+<p>
+<span>Flit Mode is required at 64 GT/s and can also operate at lower Link speeds. Once a Link trains into Flit Mode, it remains in that mode while the Link stays up.</span>
+</p>
+
+
+<h3 id="section-21"><span>B. TS0 — a new training character for 64 GT/s Flit-mode equalization</span></h3>
+
+
+<p>
+<span>TS0 is a Gen6 addition used for 64 GT/s Flit-mode equalization. In a Gen6 analyzer trace, it provides an important boundary: did failure occur before TS0-based equalization, during it, or after it completed?</span>
+</p>
+
+
+<h3 id="section-22"><span>C. Ordered Sets must survive a much higher BER environment</span></h3>
+
+
+<p>
+<span>FEC protects Flits, while training Ordered Sets remain lane-level control structures. At 64 and 128 GT/s, their robustness relies on generation-specific repetition/handshake and redundancy mechanisms rather than simply using the normal Flit FEC path.</span>
+</p>
+
+
+<pre><span>What gets harder in PCIe Gen7?
+PCIe 7.0 doubles the rate to 128 GT/s while retaining PAM4 and the 256-byte Flit architecture. The unit interval is 15.625 ps and the Nyquist frequency is 32 GHz.
+
+The LTSSM concepts remain familiar, but channel loss and discontinuities, jitter/refclk/power noise, retimer partitioning and marginal lanes consume more margin. Protocol traces should therefore be correlated with electrical measurements.        </span></pre>
+
+
+<h2 id="section-23">
+<span>Gen6 L0p: dynamic width change is not failed Link training</span>
+</h2>
+
+
+<p>
+<span>Gen6 L0p can temporarily reduce active lanes in Flit Mode while the configured Link remains operational and traffic continues. It does not use Recovery and should not be confused with initial x16→x8 downconfiguration.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/1f3a3f0cc7507a6d.jpg"/>
+ </figure>
+
+
+<p>
+<span>If the Link first trained x16 and later reduces active lanes, L0p may be normal; if it never formed above x8, debug Detect and Configuration instead.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-24">
+<span>Practical debug cases: how to narrow the problem</span>
+</h2>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/0fd0dd1bfb26fb30.jpg"/>
+ </figure>
+
+<hr/>
+
+<h2 id="section-25">
+<span>Next Part: The Link Is Up. Why Is the Device Still Invisible?</span>
+</h2>
+
+
+<p>
+<span>Assume the Link is now stable at 64 GT/s x16 and the Data Link Layer is active, yet the operating system still sees no device. Part 3 moves above Link training into Configuration Space, Type 0/Type 1 Requests, BDF discovery, BAR sizing, bridge windows and enumeration.</span>
+</p>
+</article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>

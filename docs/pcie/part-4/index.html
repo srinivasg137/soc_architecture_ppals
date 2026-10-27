@@ -1,1 +1,286 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The endpoint is visible. Why can the driver still not use it? | SoC PPALS</title><meta name="description" content="Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping."><meta name="theme-color" content="#102d31"><meta property="og:title" content="The endpoint is visible. Why can the driver still not use it?"><meta property="og:description" content="Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping."><link rel="icon" href="../../favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../../style.css"><script defer src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a class="brand" href="../../" aria-label="SoC PPALS home"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button class="menutoggle" aria-expanded="false" aria-controls="nav">Menu</button><nav id="nav" aria-label="Main navigation"><a  href="../../">Home</a><a  href="../../soc-architecture/">SoC Architecture</a><a  href="../../width-vs-frequency/">Interactive lab</a><a aria-current=page href="../">PCIe series</a><a  href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 4</p><h1>The endpoint is visible. Why can the driver still not use it?</h1><p class="lede">Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Technical guide</span><button class="copylink">Copy link</button></div></section><div class="readinglayout"><aside class="toc"><b>IN THIS ARTICLE</b><a href="#s0">Visible does not mean usable</a><a href="#s1">BARs and bridge windows have different jobs</a><a href="#s2">Sizing and address placement</a><a href="#s3">A worked allocation failure</a><a href="#s4">Follow the driver in order</a><a href="#s5">A practical debug sequence</a><a href="#s6">About this edition</a><a class="textlink" href="https://www.linkedin.com/newsletters/pcie-gen6-gen7-series-7495170097020297216/">Visit the PCIe newsletter ↗</a></aside><article class="prose"><section id="s0"><h2>Visible does not mean usable</h2><p>The endpoint appears as 03:00.0. Configuration reads return its Vendor ID, Device ID and capabilities. The driver matches the Function, but BAR0 has no assigned address.</p><p>Configuration visibility proves that the configuration route works. MMIO usability also requires a valid address allocation, bridge windows covering that address and Memory Space Enable at the endpoint.</p></section><section id="s1"><h2>BARs and bridge windows have different jobs</h2><p>A Base Address Register describes an endpoint resource aperture. A 32 bit memory BAR uses one register position; a 64 bit BAR uses an adjacent pair. A bridge memory window determines which address ranges the bridge forwards downstream.</p><p>Allocating the endpoint BAR is insufficient if a parent bridge cannot forward its complete range.</p></section><section id="s2"><h2>Sizing and address placement</h2><p>Enumeration software probes the implemented BAR size under controlled conditions and allocates an appropriately sized and aligned range. A 32 bit memory BAR must lie below 4 GB. A 64 bit memory BAR can lie below or above 4 GB.</p><p>Available host bridge apertures and reserved regions still constrain allocation. A 64 bit CPU does not by itself guarantee sufficient MMIO space. Above 4G decoding is a platform firmware option related to that resource map; it does not change the endpoint’s DMA address width.</p><div class="note">Do not manually size a live BAR. Use the operating system’s resource information and controlled enumeration procedures.</div></section><section id="s3"><h2>A worked allocation failure</h2><p>Consider a 256 MB, 64 bit prefetchable resource using the BAR0/BAR1 pair. The downstream bridge window provides only 128 MB and cannot grow in the current map. The endpoint remains configuration visible, but there is no valid allocation path for that resource.</p><p>This is an illustrative address map, not a claim about the aperture size of a particular accelerator. The repair is to provide a suitable region and valid windows throughout the hierarchy, then enable memory decoding.</p></section><section id="s4"><h2>Follow the driver in order</h2><div class="journey">Resource assigned → Region reserved → BAR mapped → Register access</div><p>On Linux, device enable, region reservation and BAR mapping are separate steps. Check every return value. Use the PCI core’s resource records: CPU physical addresses and PCI bus addresses are not necessarily identical on every platform.</p></section><section id="s5"><h2>A practical debug sequence</h2><ol><li>Save the topology, boot log, configuration space and resource map.</li><li>Confirm stable configuration reads for the endpoint.</li><li>Inspect BAR type, size, alignment and assigned range.</li><li>Check the host bridge’s available MMIO apertures.</li><li>Walk every parent bridge window and verify full containment.</li><li>Check endpoint Memory Space Enable.</li><li>Identify the exact driver step that fails.</li></ol><p>Gen6 and Gen7 increase transport capability, but these resource and driver boundaries still require separate validation.</p></section><section id="s6"><h2>About this edition</h2><p>This web guide is adapted from the Part 4 source manuscript. The series continues from CPU initiated register access toward endpoint initiated DMA and address translation.</p><a class="button secondary" href="https://www.linkedin.com/newsletters/pcie-gen6-gen7-series-7495170097020297216/">Visit the PCIe newsletter<span aria-hidden="true">↗</span></a></section><div class="endnote"><p>Explore the assumptions. Follow the evidence. Keep the system boundary visible.</p><a class="button secondary" href="../">Back to the PCIe series<span aria-hidden="true">↗</span></a></div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>PCIe End point Visible but Unusable | SoC PPALS</title><meta content="Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping." name="description"/><meta content="#102d31" name="theme-color"/><meta content="The endpoint is visible. Why can the driver still not use it?" property="og:title"/><meta content="Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping." property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a aria-current="page" href="../">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 4</p><h1>PCIe End point Visible but Unusable</h1><p class="lede">Understand BAR sizing, address allocation, bridge windows and a usable MMIO mapping.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b><a href="#section-0">
+Visibility and usability use different routing information
+</a><a href="#section-1">
+Type 0 and Type 1 Headers
+</a><a href="#section-2">
+BAR meaning, sizing, and selection
+</a><a href="#section-3">
+Choosing a 32-bit or 64-bit address
+</a><a href="#section-4">
+Bridge windows make the address reachable
+</a><a href="#section-5">
+ Memory Space Enable is the final endpoint gate
+</a><a href="#section-6">
+What the operating system and driver observe
+</a><a href="#section-7">
+ A practical debug sequence
+</a><a href="#section-8">
+Common conclusions that waste debug time
+</a></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/pcie-end-point-visible-unusable-srinivas-gaddam-3aw5f">View original article ↗</a></p><figure>
+<!-- --> 
+
+<img alt="PCIe End point Visible but Unusable" decoding="async" loading="lazy" src="../../article-images/f9a034c96463de1f.jpg"/>
+
+
+<!-- --> </figure>
+<p>
+<span>The x16 link is in L0. DLL Active is set. Configuration reads return valid data. The endpoint appears in the software tree as 03:00.0, and the operating system can read its Vendor ID, Device ID, Class Code, and capabilities. The driver matches the Function, but initialization stops before the first device register access. BAR0 has no assigned address.</span>
+</p>
+
+
+<p>
+<span>If software can see the Function, why can the driver still not use it?</span>
+</p>
+
+
+<p>
+<span>Configuration visibility and MMIO usability are different milestones. Visibility proves that configuration traffic can reach the Function, while MMIO also requires valid BAR assignment, sufficient Type 1 bridge windows, and Memory Space Enable. Debug these resources and the driver failure point before returning to LTSSM, equalization, or lane margining.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-0">
+<span>Visibility and usability use different routing information</span>
+</h2>
+
+
+<p>
+<span>Software first selects a PCI segment, then identifies a Function by Bus, Device, and Function. The host bridge issues a Configuration Request inside that segment. The Root Port and each bridge use their bus number registers to decide whether the request belongs below them. This is how software reaches 03:00.0 before any normal device register address exists.</span>
+</p>
+
+
+<p>
+<span>A Memory Request is different. It carries an address. Each bridge decides whether that address falls inside one of its enabled memory windows. At the endpoint, a BAR must claim the address, and the Command register must allow Memory Space decoding. If any one of these checks fails, the request does not reach a usable register block.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/21ac21c2c6d4176b.jpg"/>
+ </figure>
+
+<hr/>
+
+<h2 id="section-1">
+<span>Type 0 and Type 1 Headers</span>
+</h2>
+
+
+<p>
+<span>Before looking at BAR assignment, it helps to place the two configuration header types in the real topology. A normal endpoint Function uses a Type 0 header. A Root Port and a PCIe switch port behave as bridge Functions and use a Type 1 header.</span>
+</p>
+
+
+<p>
+<span>The Root Complex is the host side PCIe logic inside the processor or SoC. A Root Port is the bridge Function at the edge of that Root Complex. They are related blocks, not two separate cards on the motherboard.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/3bdc2370bcc9c586.jpg"/>
+ </figure>
+
+
+<p>
+<span>The endpoint BARs and the bridge windows do different jobs. A BAR tells the endpoint which addresses range belongs to one of its resources. A bridge window tells a bridge which addresses range must be forwarded downstream. The complete path needs both.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-2">
+<span>BAR meaning, sizing, and selection</span>
+</h2>
+
+
+<p>
+<span>A BAR describes an address window in endpoint Type 0 configuration space, not the storage behind it. A 32-bit memory BAR uses one of the six BAR positions, while a 64-bit BAR uses an adjacent pair, and the upper position is part of the same resource.</span>
+</p>
+
+
+<p>
+<span>During enumeration, firmware or the operating system disables Memory Space decoding, writes all ones, reads the implemented address mask, calculates the power of two size and alignment, restores the BAR, and allocates an address through every parent bridge window. BAR0 value 0xF000000C with BAR1 value 0xFFFFFFFF forms mask 0xFFFFFFFFF0000000, which describes a 256 MB, 64-bit, prefetchable resource.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/a717fe108fa7040a.jpg"/>
+ </figure>
+
+
+<p>
+<span>A fixed BAR supports one size. Resizable BAR offers several supported sizes, but software can select only a size that fits the complete hierarchy; the prefetchable attribute also does not by itself make the range normal cacheable memory.</span>
+</p>
+
+
+<pre><span>Never size a live BAR by hand:  For a 16 MB BAR0 assigned at 0x80000000, writing all ones while Memory Space Enable remains set can move the decode to 0xFF000000 while the driver still uses the old address. Read the operating system resource record instead and use controlled device removal and rescan or reboot if sizing must be repeated.        </span></pre>
+
+<hr/>
+
+<h2 id="section-3">
+<span>Choosing a 32-bit or 64-bit address</span>
+</h2>
+
+
+<p>
+<span>Modern AI servers may contain several accelerators, DPUs, PCIe switches, and many virtual Functions. Each device can request significant MMIO space. The challenge is therefore not only assigning one BAR but fitting every BAR into the complete system address map.</span>
+</p>
+
+
+<p>
+<span>A 32-bit Memory BAR can encode only a PCI bus address below 4 GB. A 64-bit Memory BAR may be assigned below or above 4 GB, but its complete range must fit inside the host bridge window and every Type 1 bridge window along the path. A 64-bit CPU alone does not guarantee that this space is available.</span>
+</p>
+
+
+<p>
+<span>Server firmware often provides an option called Above 4G Decoding or MMIO Above 4 GB. Enabling it allows large 64-bit BARs to be placed above 4 GB. It does not resize the BAR, change DMA address capability, or remove the need for bridge windows. Resizable BAR is separate and allows software to select one of the BAR sizes supported by the endpoint.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-4">
+<span>Bridge windows make the address reachable</span>
+</h2>
+
+
+<p>
+<span>The allocator cannot program only the endpoint BAR. It must also program every Type 1 Function between the Root Complex and the endpoint. Each relevant window uses a base and a limit. The endpoint BAR range must sit completely inside the window at every level.</span>
+</p>
+
+
+<p>
+<span>In the example topology, the path is Root Port 00:01.0, Switch Upstream Port 01:00.0, Switch Downstream Port 02:00.0, and Endpoint 03:00.0. The BAR can be reached only if the Root Port and both switch bridge Functions forward the complete range.</span>
+</p>
+
+
+<p>
+<span>Suppose BAR0 and BAR1 form a 256 MB resource, but the available downstream switch window is only 128 MB and cannot be enlarged because the adjacent range is already reserved. The Function still answers configuration requests. The resource allocator, however, has no valid end to end path for the BAR and may leave BAR0 unassigned.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/a9aa72a7b6525bc6.jpg"/>
+ </figure>
+
+<hr/>
+
+<h2 id="section-5">
+<span> Memory Space Enable is the final endpoint gate</span>
+</h2>
+
+
+<p>
+<span>The Command register in the Type 0 header contains Memory Space Enable. When this bit is clear, the Function must not respond to Memory Requests through its BARs. Enumeration software normally keeps this bit clear while it probes and moves resources. It enables memory decoding only after the BAR values and the forwarding path are valid.</span>
+</p>
+
+
+<p>
+<span>A programmed BAR with Memory Space Enable clear is still not usable. The opposite is also unsafe: enabling memory decoding before the address hierarchy is valid can expose a wrong or conflicting range. Always inspect the BAR, the windows, and the Command register as one set.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-6">
+<span>What the operating system and driver observe</span>
+</h2>
+
+
+<p>
+<span>Linux is a useful example because it exposes each boundary clearly. The same architectural boundaries exist in other operating systems.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/186ec12865efa4a4.jpg"/>
+ </figure>
+
+
+<p>
+<span>A Linux driver generally enables the device, requests ownership of its MMIO region, and then maps the BAR. Functions such as pci_enable_device_mem, pci_request_region, and pci_iomap expose these steps. Every return value matters. A driver should also use the resource information maintained by the PCI core, because the host physical address may differ from the raw PCI bus address on some architectures.</span>
+</p>
+
+
+<pre><span>configuration visible  →  resource assigned  →  region reserved  →  BAR mapped  →  register access        </span></pre>
+
+<hr/>
+
+<h2 id="section-7">
+<span> A practical debug sequence</span>
+</h2>
+
+
+<p>
+<span>Use the failure boundary to avoid mixing link debug, resource debug, and driver debug. I normally walk the following sequence.</span>
+</p>
+
+
+<p>
+<span>1.  Freeze the evidence. Save the topology, boot log, configuration space, and resource map before changing firmware settings.</span>
+</p>
+
+
+<p>
+<span>2.  Confirm that 03:00.0 is consistently readable. Check Vendor ID and Device ID more than once. This separates a stable configuration path from an intermittent link problem.</span>
+</p>
+
+
+<p>
+<span>3.  Inspect the operating system resource record for every endpoint BAR. Record type, size, start, end, and flags. Do not rely only on the device name in the tree.</span>
+</p>
+
+
+<p>
+<span>4.  Validate the BAR declaration from an early enumeration trace or trusted firmware log. Confirm 32 bit or 64 bit type, pairing, attribute, size, and required alignment.</span>
+</p>
+
+
+<p>
+<span>5.  Check the host bridge MMIO budget. Confirm that the platform exposes enough address space below 4 GB or above 4 GB for this resource.</span>
+</p>
+
+
+<p>
+<span>6.  Walk upward from 03:00.0. For each switch port and the Root Port, compare the BAR range with the correct Type 1 memory window. One missing parent is enough to break the path.</span>
+</p>
+
+
+<p>
+<span>7.  Read the endpoint Command register. Memory Space Enable should be set only after the range is valid. If it is clear, find out whether allocation failed earlier.</span>
+</p>
+
+
+<p>
+<span>8.  Follow the driver in order. Identify whether it fails during device enable, region reservation, BAR mapping, or the first register read. These failures point to different owners.</span>
+</p>
+
+
+<p>
+<span>9.  Use a protocol analyzer only after the software path is understood. If software never created a usable mapping, no valid Memory Request may be emitted for the endpoint registers.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-8">
+<span>Common conclusions that waste debug time</span>
+</h2>
+
+
+<p>
+<span>
+</span></p><ol>
+<li><span>L0 means the device is ready. L0 proves link operation. It does not prove BAR assignment or driver mapping.</span></li>
+<li><span>A 64 bit BAR must be above 4 GB. It may be placed below 4 GB when a suitable range exists.</span></li>
+<li><span> A 64 bit processor always has enough MMIO space. The host bridge windows and reserved platform regions still limit allocation.</span></li>
+<li><span>A zero BAR value means the BAR is absent. The implemented size mask, not the initial base value alone, decides this.</span></li>
+<li><span> Prefetchable means normal cached memory. It is a PCI resource attribute and is not a complete CPU mapping policy.</span></li>
+<li><span>Resetting the endpoint will repair an address conflict. A reset can clear programming, but it cannot create missing address space or enlarge a bridge window.</span></li>
+</ol>
+
+<p></p>
+
+<hr/>
+
+<p>
+<span>Have you seen a PCIe Endpoint appear in the software tree but remain unusable because of BAR allocation or bridge window limits?</span>
+</p>
+</article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>

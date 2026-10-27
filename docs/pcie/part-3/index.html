@@ -1,1 +1,235 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The Link is up. Why is the endpoint still invisible? | SoC PPALS</title><meta name="description" content="Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy."><meta name="theme-color" content="#102d31"><meta property="og:title" content="The Link is up. Why is the endpoint still invisible?"><meta property="og:description" content="Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy."><link rel="icon" href="../../favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../../style.css"><script defer src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a class="brand" href="../../" aria-label="SoC PPALS home"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button class="menutoggle" aria-expanded="false" aria-controls="nav">Menu</button><nav id="nav" aria-label="Main navigation"><a  href="../../">Home</a><a  href="../../soc-architecture/">SoC Architecture</a><a  href="../../width-vs-frequency/">Interactive lab</a><a aria-current=page href="../">PCIe series</a><a  href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 3</p><h1>The Link is up. Why is the endpoint still invisible?</h1><p class="lede">Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Technical guide</span><button class="copylink">Copy link</button></div></section><div class="readinglayout"><aside class="toc"><b>IN THIS ARTICLE</b><a href="#s0">A healthy link is not enough</a><a href="#s1">Follow bus routing</a><a href="#s2">Type 0 and Type 1 requests</a><a href="#s3">Debug one boundary at a time</a><a href="#s4">The next boundary</a><a class="textlink" href="https://www.linkedin.com/pulse/link-up-why-pcie-endpoint-still-invisible-srinivas-gaddam-sar3f">Read the original on LinkedIn ↗</a></aside><article class="prose"><section id="s0"><h2>A healthy link is not enough</h2><p>Assume the link is stable and the Data Link Layer is active, but the operating system still cannot discover the endpoint. The next investigation is the configuration transaction path.</p><p>Discovery depends on reaching the Function and receiving a valid Completion. BAR allocation is a later boundary.</p></section><section id="s1"><h2>Follow bus routing</h2><p>Software identifies a Function using Bus, Device and Function within a PCI segment. Bridge bus number registers define which bus numbers exist below each bridge. Incorrect secondary or subordinate bus programming can prevent a Configuration Request from reaching the endpoint.</p><div class="journey">Root Port → Switch bridge Functions → Endpoint</div></section><section id="s2"><h2>Type 0 and Type 1 requests</h2><p>Configuration routing uses Type 1 requests to travel through the hierarchy toward the target bus, with Type 0 access on the target bus. These request types should not be confused with the Type 0 and Type 1 configuration header layouts.</p></section><section id="s3"><h2>Debug one boundary at a time</h2><ol><li>Confirm stable link and Data Link status.</li><li>Record the intended topology and bus numbering.</li><li>Trace the Configuration Request through the bridge hierarchy.</li><li>Check whether a Completion returns and whether it reports success.</li><li>Correlate the hardware trace with the operating system’s discovery attempt.</li></ol><p>At Gen6 and Gen7 rates, decode the physical transport before interpreting the configuration transaction. A retimer is a physical observation point, not another enumerated bridge Function.</p></section><section id="s4"><h2>The next boundary</h2><p>Once identity reads succeed, the endpoint is configuration visible. Making its registers usable requires resources and an address path. That is the subject of Part 4.</p><a class="button " href="https://www.linkedin.com/pulse/link-up-why-pcie-endpoint-still-invisible-srinivas-gaddam-sar3f">Read Part 3 on LinkedIn<span aria-hidden="true">↗</span></a></section><div class="endnote"><p>Explore the assumptions. Follow the evidence. Keep the system boundary visible.</p><a class="button secondary" href="../">Back to the PCIe series<span aria-hidden="true">↗</span></a></div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>The Link Is Up. Why Is the PCIe Endpoint Still Invisible? | SoC PPALS</title><meta content="Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy." name="description"/><meta content="#102d31" name="theme-color"/><meta content="The Link is up. Why is the endpoint still invisible?" property="og:title"/><meta content="Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy." property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a aria-current="page" href="../">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← PCIe Systems</a><p class="eyebrow">PCIe Systems / PART 3</p><h1>The Link Is Up. Why Is the PCIe Endpoint Still Invisible?</h1><p class="lede">Trace Configuration Requests, bus numbers and discovery through the PCIe hierarchy.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/link-up-why-pcie-endpoint-still-invisible-srinivas-gaddam-sar3f">View original article ↗</a></p><figure>
+<!-- --> 
+
+<img alt="The Link Is Up. Why Is the PCIe Endpoint Still Invisible?" decoding="async" loading="lazy" src="../../article-images/cd1d425476fb097c.jpg"/>
+
+
+<figcaption>Figure 1 Discovery failure illustration</figcaption>
+</figure>
+<p>
+<span>The link is in L0, its normal operating state, but the endpoint does not appear in lspci, the Linux utility that lists PCI devices. Where did the first Configuration Read stop?</span>
+</p>
+
+
+<p>
+<span>Consider an accelerator behind a PCIe switch. The host connects through a Root Port, a port of the Root Complex that links the processor system to PCIe. The links report the expected speed and width, and Data Link Layer Link Active indicates that the link is active at that layer, where this status is supported. Firmware still cannot discover the accelerator.</span>
+</p>
+
+
+<p>
+<span>Enumeration is the process by which software discovers PCIe Functions and configures their resources. A Function is an independently addressable part of a device with its own Configuration Space. L0 alone does not prove that the intended Function received a request or returned a Completion, the transaction response. Recovery, a link state used for retraining, may also occur during discovery.</span>
+</p>
+
+<hr/>
+
+<p>
+<span>Configuration Space contains the identification and control registers used to discover and configure a Function. Reading a DWORD at offset 00h returns Vendor ID in bits 15:0 and Device ID in bits 31:16. A valid response lets discovery continue.</span>
+</p>
+
+
+<p>
+<span>In 0000:03:00.0, the fields are Segment 0000, Bus 03, Device 00 and Function 0. Bus, Device and Function together form the BDF address within a segment. Bus numbers are assigned during enumeration, so this is an illustrative address, not a permanent identity of the card.</span>
+</p>
+
+
+<p>
+<span>ECAM, the Enhanced Configuration Access Mechanism, gives software a memory mapped window into PCIe Configuration Space. The host bridge decodes the processor address into a BDF and register offset, then generates a Configuration Read Transaction Layer Packet, or TLP. For this example, software accesses the ECAM location for 03:00.0 at offset 00h. It is reading configuration registers, not ordinary RAM or the accelerator data registers. No Base Address Register, or BAR, needs to be assigned first; BARs describe the address resources that software will allocate later.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/adf329c6a45dac0b.jpg"/>
+<figcaption>
+<span>Figure 2 Request and completion TLPs</span>
+</figcaption>
+</figure>
+
+
+<p>
+<span>A TLP carries a PCIe request or Completion. Its header describes the operation and routing; its payload carries data when needed. A Configuration Read has no request payload. The register value returns in a separate Completion with Data, usually shown as CplD.</span>
+</p>
+
+
+<p>
+<span>Both Configuration Reads and Configuration Writes are Non Posted requests. They require a Completion. A successful Configuration Write returns a Completion without Data, shown as Cpl. This differs from an ordinary Memory Write, which is Posted and does not receive a transaction Completion.</span>
+</p>
+
+<hr/>
+
+<p>
+<strong>How the request reaches the correct bus</strong>
+</p>
+
+
+<p>
+<span>Enumeration discovers bridges, the routing elements between buses, and programs their bus numbers before scanning further below them. A bridge records its Primary Bus Number on the host side, its directly attached Secondary Bus Number and the highest Subordinate Bus Number reachable below it.</span>
+</p>
+
+
+<p>
+<span>For a target further below a bridge, a Type 1 Configuration Request travels toward the target bus while that bus lies within the forwarding range. When the target matches the bridge Secondary Bus Number, the request is converted to Type 0 for the final bus. A directly attached endpoint can receive Type 0 straight from its Root Port.</span>
+</p>
+
+
+<p>
+<span>Both conventional Type 0 and Type 1 Configuration Request headers contain Bus, Device and Function fields. Type 0 does not remove the Bus Number field. The distinction is the routing behavior: Type 0 is used on the selected final bus and is not forwarded onward as another Type 1 request.</span>
+</p>
+
+
+<p>
+<span>Also keep the packet type separate from the Configuration Space header layout. A bridge has a Type 1 Configuration Space header, but software can access that bridge itself using a Type 0 Configuration Request on the bus where it resides. These two uses of Type 0 and Type 1 describe different things.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/ccad5fa652856743.jpg"/>
+<figcaption>
+<span>Figure 3 PCIe discovery steps</span>
+</figcaption>
+</figure>
+
+
+<p>
+<strong>A wrong bus range can look like a dead endpoint</strong>
+</p>
+
+
+<p>
+<span>In Figure 3, the Root Port must cover Bus 03. Suppose firmware leaves its Subordinate Bus Number at 02. A request targeting Bus 03 will not be forwarded down that path. Depending on the host scan policy, software may never issue that request at all. The endpoint link can remain healthy in either case.</span>
+</p>
+
+
+<p>
+<span>The useful evidence is a missing Type 0 request on the endpoint link together with an incorrect bus range above it. Correct the enumeration or bus allocation problem, then capture the read again. Changing endpoint BARs cannot repair configuration routing, because BAR addresses are not used to route this request.</span>
+</p>
+
+
+<p>
+<em>Vendor ID FFFFh normally means software treats the Function as absent. It is an observation at the software interface, not proof that the endpoint returned a successful packet containing all ones. The host controller can translate different failures into a similar processor read result.</em>
+</p>
+
+<hr/>
+
+<p>
+<strong>Successful Completion</strong>
+</p>
+
+
+<p>
+<span>For the initial full DWORD read, a valid CplD returns Vendor ID and Device ID. Software can then inspect Header Type, Class Code and capability structures. This does not yet validate MMIO, meaning memory mapped input/output, where processor reads and writes access device registers through an assigned memory address range.</span>
+</p>
+
+
+<p>
+<strong>No matching Completion</strong>
+</p>
+
+
+<p>
+<span>If the request leaves the host but no matching Completion returns, investigate a missing response, a blocked return path or an invalid response that was rejected. A timeout may eventually terminate the access. Configuration access timeout handling and its processor side result depend on the host controller, so use its documentation rather than assuming one timeout value or one returned data pattern.</span>
+</p>
+
+
+<p>
+<span>In a  SoC, the PCIe controller may connect to other blocks through AXI. Inspect the AXI response as well as the read data. Some bridges return all ones with an OKAY response, meaning success on the AXI interface, for selected configuration errors. Other outcomes produce an error response. Firmware logs and Root Port error reporting can expose similar distinctions on a server.</span>
+</p>
+
+
+<p>
+<span>Capture the status before resetting the device or clearing error registers. Repeated reads can show that the failure is reproducible, but they cannot tell us whether the original failure was a routing error, a retry condition or a lost Completion.</span>
+</p>
+
+<hr/>
+
+<p>
+<strong>Find the first point where the read stops</strong>
+</p>
+
+
+<p>
+<span>I would keep one target BDF and register offset fixed, then correlate the host log, protocol capture and endpoint trace around the same access. The aim is to find the first missing event, rather than change several settings and lose the original evidence.</span>
+</p>
+
+
+<p>
+<strong>Start at the host</strong>
+</p>
+
+
+<p>
+<span>Confirm that firmware or the operating system actually scans the intended bus. Check the host bridge configuration aperture, segment, permitted bus range and Root Port state. lspci shows devices Linux has discovered; it is not a capture of every request issued during boot. An absent entry alone cannot tell us whether a read went onto the link.</span>
+</p>
+
+
+<p>
+<strong>Follow the bridges</strong>
+</p>
+
+
+<p>
+<span>Read the Primary, Secondary and Subordinate Bus Numbers along the path. Compare them with the BDF in the captured request. If the request is present upstream but absent downstream, inspect that routing boundary before investigating the endpoint register logic. At the last bridge, verify Type 0 conversion.</span>
+</p>
+
+
+<p>
+<strong>Inspect the configuration responder</strong>
+</p>
+
+
+<p>
+<span>If Type 0 reaches the endpoint, check Function selection, register decode, Byte Enables and the responder reset and clock. Identify whether fixed silicon logic, often called the PCIe hard block, or application logic owns this register range. Some PCIe IP, meaning a reusable hardware design block, handles Configuration Space internally. An empty application receive interface therefore does not prove the TLP was lost.</span>
+</p>
+
+
+<p>
+<span>Then follow Completion generation, transmit acceptance and the returning packet. An RTL trace observes internal signals in the register transfer level hardware design. Useful signals include request accepted, selected Function, register offset, response status, data, Tag and Completion transmit handshake. If a ready response cannot leave, check backpressure, where the next stage cannot accept data, and flow control, which limits transmission according to available receive capacity.</span>
+</p>
+
+
+<p>
+<strong>Match the response at the host</strong>
+</p>
+
+
+<p>
+<span>Check the returned Requester ID, Tag, status and data against the original request. If the correct Completion reaches the Root Port but software still sees failure, move to host completion handling and the processor interface. Increasing a timeout does not fix an incorrectly matched response.</span>
+</p>
+
+
+<p>
+<strong>Use speed changes as a controlled experiment</strong>
+</p>
+
+
+<p>
+<span>After saving the original capture, repeat at a lower speed if the failure depends on link conditions. Keep reset timing and the software sequence comparable. Success at a lower rate is useful evidence, but it is not enough to conclude that signal integrity is the cause; the changed timing can also expose or hide an initialization problem.</span>
+</p>
+
+
+<p>
+<span>For an intermittent failure, record the first configuration access after reset, any CRS responses, Recovery entries and the final host result on one timeline. This makes a late configuration responder distinguishable from a link that became unstable during the read.</span>
+</p>
+
+<hr/>
+
+<p>
+<strong>The next question is address allocation</strong>
+</p>
+
+
+<p>
+<span>Once configuration reads work reliably, we can move to the next failure: the device appears in lspci, but the driver cannot access its registers. Part 4 follows BAR sizing and address assignment, 32 bit and 64 bit BARs, prefetchable memory, bridge windows and Memory Space Enable. Above 4G allocation and Resizable BAR fit into that same discussion. Discovery gives us a Function to configure; the next step is making its address space usable.</span>
+</p>
+
+
+<p>
+<span>What kind of issues you observed related to end point discovery ?</span>
+</p>
+
+
+<p>
+<br/>
+</p>
+</article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../../soc-architecture/">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>

@@ -1,1 +1,255 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wider datapath or higher frequency? | SoC PPALS</title><meta name="description" content="Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget."><meta name="theme-color" content="#102d31"><meta property="og:title" content="Wider datapath or higher frequency?"><meta property="og:description" content="Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget."><link rel="icon" href="../../favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../../style.css"><script defer src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a class="brand" href="../../" aria-label="SoC PPALS home"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button class="menutoggle" aria-expanded="false" aria-controls="nav">Menu</button><nav id="nav" aria-label="Main navigation"><a  href="../../">Home</a><a aria-current=page href="../">SoC Architecture</a><a  href="../../width-vs-frequency/">Interactive lab</a><a  href="../../pcie/">PCIe series</a><a  href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← SoC Architecture</a><p class="eyebrow">SoC Architecture / PART 1</p><h1>Wider datapath or higher frequency?</h1><p class="lede">Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Technical guide</span><button class="copylink">Copy link</button></div></section><div class="readinglayout"><aside class="toc"><b>IN THIS ARTICLE</b><a href="#s0">The engineering question</a><a href="#s1">Peak capacity is only the beginning</a><a href="#s2">When widening helps</a><a href="#s3">What changes at 2 GHz</a><a href="#s4">What two engines require</a><a href="#s5">Compare energy and physical cost</a><a href="#s6">Make a provisional architecture decision</a><a href="#s7">Try the interactive lab</a><a class="textlink" href="https://www.linkedin.com/pulse/wider-datapath-higher-frequency-srinivas-gaddam-n5uvc">Read the original on LinkedIn ↗</a></aside><article class="prose"><section id="s0"><h2>The engineering question</h2><p>A 512 bit datapath at 1 GHz must deliver twice its useful throughput. Should we widen it to 1024 bits, raise the clock to 2 GHz, or use two engines?</p><p>First check where bandwidth is lost. An engine waiting for memory needs a different solution from one moving partially filled words. Consider an internal DMA payload path between a PCIe subsystem and the SoC fabric. Both ends must support the target.</p><div class="note">The operating points are illustrative design assumptions, not vendor measurements or PCIe link rates.</div></section><section id="s1"><h2>Peak capacity is only the beginning</h2><div class="tablewrap"><table><tr><th>Architecture</th><th>Peak capacity</th></tr><tr><td>512 bits at 1 GHz</td><td>64 GB/s</td></tr><tr><td>1024 bits at 1 GHz</td><td>128 GB/s</td></tr><tr><td>512 bits at 2 GHz</td><td>128 GB/s</td></tr><tr><td>Two 512 bit engines at 1 GHz</td><td>128 GB/s aggregate</td></tr></table></div><p>These one direction rates assume one accepted word per cycle. If the original sustains 48 GB/s, the target is 96 GB/s. A useful payload target of 128 GB/s leaves no room for overhead in a nominal 128 GB/s design.</p><div class="formula">Useful throughput = (width ÷ 8) × frequency × transfer utilization × useful byte occupancy</div><p>For example, 128 GB/s × 0.85 × 0.90 gives 97.92 GB/s, only 2% above the target. For two engines, calculate their rates separately and add them.</p></section><section id="s2"><h2>When widening helps</h2><p>A wider engine suits long payloads when the processing lanes, buffers and fabric can move more data. An unchanged 512 bit port at 1 GHz still limits that path to 64 GB/s. A width converter does not create bandwidth.</p><p>Suppose each data item contains 48 bytes and the engine accepts one item per beat, without packing. At 1 GHz, both a 512 bit design and a 1024 bit design deliver 48 GB/s. Widening helps this workload only if the design can pack and process multiple items together.</p><p>Inspect size and alignment distributions. A FIFO with 64 entries stores 4 KiB at 512 bits and 8 KiB at 1024 bits, before metadata. Register load, muxes, control fanout and routing also change.</p></section><section id="s3"><h2>What changes at 2 GHz</h2><p>The period falls from 1 ns to 0.5 ns. Clock to Q, setup, uncertainty and skew leave less time for logic and wires. With an illustrative 100 ps allowance, the remaining budget falls from 900 ps to 400 ps.</p><p>Pipelining can shorten a logic path, but data, tags, byte enables and errors must remain aligned. Feedback may still limit how often new work enters. Memory macros, crossings and the downstream fabric must support the higher service rate.</p><p>Eight stages at 1 GHz and sixteen at 2 GHz both give 8 ns of nominal pipeline latency. Higher throughput does not necessarily mean a shorter completion time for one operation.</p></section><section id="s4"><h2>What two engines require</h2><p>Replication retains the local clock target but adds control state, dispatch and possibly result ordering. Independent descriptors or flows are natural candidates. A single dependency chain cannot keep both engines busy without another mechanism.</p><p>Both engines need enough aggregate input and output bandwidth. Shared SRAM ports, memory banks and merge logic can become bottlenecks. If one engine sustains 48 GB/s and two sustain 80 GB/s, scaling efficiency is 80 ÷ 96 = 83.3%. The pair still misses the target.</p><p>Inspect each engine separately. An average utilization can hide uneven work distribution or source starvation.</p></section><section id="s5"><h2>Compare energy and physical cost</h2><div class="formula">Dynamic power ≈ activity × capacitance × voltage² × frequency</div><p>Doubling frequency doubles this component only when everything else stays constant. If voltage rises from an assumed 0.75 V to 0.90 V, the factor becomes 2 × (0.90 ÷ 0.75)² = 2.88. That is a conditional example, not a process requirement.</p><p>Widening or replication also changes switched capacitance. Compare energy per useful byte over the same workload, including clock power, leakage, buffering and crossings. For bursty traffic, include idle time and wakeup overhead.</p><p>If wires dominate, examine locality and placement. Wider buses increase connectivity demand; faster clocks give long routes less time. Two local engines help only when their data and buffers can remain local.</p></section><section id="s6"><h2>Make a provisional architecture decision</h2><p>Without physical trials, choose a candidate with explicit conditions. Record the target throughput and latency, workload traces, memory service, clock assumptions, macro limits, expected placement and power accounting boundary.</p><ul><li><b>Packed payloads and matching wide interfaces:</b> investigate 1024 bits at 1 GHz.</li><li><b>Small items with credible clock and memory evidence:</b> investigate 512 bits at 2 GHz.</li><li><b>Independent queues and separate banks:</b> investigate two 512 bit engines.</li><li><b>Shared memory is saturated:</b> improve service or data reuse first.</li></ul><p>Give each unresolved assumption an owner and a validation milestone. Keep a fallback until timing, power and routing evidence support the choice.</p></section><section id="s7"><h2>Try the interactive lab</h2><p>The existing lab uses its original 256/512 bit comparison. The revised article above uses 512/1024 bits. The reasoning is the same, but the absolute capacities differ. The lab makes its own configuration, power and area assumptions explicit.</p><a class="button " href="../../width-vs-frequency/">Open Width vs Frequency<span aria-hidden="true">↗</span></a></section><div class="endnote"><p>Explore the assumptions. Follow the evidence. Keep the system boundary visible.</p><a class="button " href="../../width-vs-frequency/">Continue to Part 1.1: the lab<span aria-hidden="true">↗</span></a></div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../../pcie/">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Wider Datapath or Higher Frequency ? | SoC PPALS</title><meta content="Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget." name="description"/><meta content="#102d31" name="theme-color"/><meta content="Wider datapath or higher frequency?" property="og:title"/><meta content="Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget." property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a aria-current="page" href="../">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a href="../../pcie/">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← SoC Architecture</a><p class="eyebrow">SoC Architecture / PART 1</p><h1>Wider Datapath or Higher Frequency ?</h1><p class="lede">Three ways to increase bandwidth. One system that must supply the data, meet timing and stay within budget.</p><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b><a href="#section-0">
+When width helps and when it does not
+</a><a href="#section-1">
+What changes at 2 GHz
+</a><a href="#section-2">
+What two engines really require
+</a><a href="#section-3">
+Compare energy per useful operation
+</a><a href="#section-4">
+Check wires and memory before choosing
+</a><a href="#section-5">
+A practical guide for early SoC architecture
+</a></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/wider-datapath-higher-frequency-srinivas-gaddam-n5uvc">View original article ↗</a></p><figure>
+<!-- --> 
+
+<img alt="Wider Datapath or Higher Frequency ?" decoding="async" loading="lazy" src="../../article-images/5fb4b117c3407b29.jpg"/>
+
+
+<!-- --> </figure>
+<p>
+<strong>A 512-bit data path at 1 GHz must deliver twice its useful throughput. Should we widen it to 1024 bits, raise the clock to 2 GHz, or use two engines?</strong>
+</p>
+
+
+<p>
+<span>I would first check where bandwidth is lost. An engine waiting for memory needs a different solution from one moving partially filled words. Consider the internal payload path of a DMA block between a PCIe subsystem and the SoC fabric. The PCIe and memory paths must support the target. These operating points are design assumptions, not product measurements or PCIe link rates.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/fee0c0f13804818c.jpg"/>
+ </figure>
+
+
+<p>
+<span>These one direction rates assume one accepted word per cycle and enough processing capacity. GB means one billion bytes. If the original sustains 48 GB/s, the target is 96 GB/s. A requirement for 128 GB/s of useful payload leaves no room for overhead in any nominal 128 GB/s option.</span>
+</p>
+
+
+<pre><span>           Useful throughput = (W ÷ 8) × f × U × E        </span></pre>
+
+
+<p>
+<span>W is width in bits, f is frequency, U is the fraction of cycles accepting a transfer, and E is useful bytes divided by available byte positions in accepted transfers. Include stalls in elapsed time. For example, 128 GB/s × 0.85 × 0.90 gives 97.92 GB/s, only 2% above our target. For two engines, calculate each rate and add them.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-0">
+<span>When width helps and when it does not</span>
+</h2>
+
+
+<p>
+<span>A wider engine suits long payloads when processing lanes, buffers and fabric can all move more data. An unchanged 512 bit port at 1 GHz still limits that path to 64 GB/s. A width converter combines words; it does not create bandwidth.</span>
+</p>
+
+
+<p>
+<span>Suppose each data item contains 48 bytes and the engine accepts one data item per beat, without packing. At 1 GHz, both 512 bit and 1024 bit designs deliver 48 GB/s. A 512 bit engine at 2 GHz can reach 96 GB/s. Two engines can also reach 96 GB/s if data items are independent and their supply and drain keep up. Widening helps only after adding support to pack and process multiple data items per beat.</span>
+</p>
+
+
+<p>
+<span>Inspect size and alignment histograms before widening. Independent lanes, barrel shifters and reduction trees have different scaling costs. Control signals on wider data paths may need more fanout buffering. A FIFO with 64 entries stores 4 KiB at 512 bits and 8 KiB at 1024 bits, before metadata. Check macro-organization and routing; area and delay need not scale directly with width.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-1">
+<span>What changes at 2 GHz</span>
+</h2>
+
+
+<p>
+<span>The period falls from 1 ns to 0.5 ns. Clock to Q, setup, uncertainty and skew allowances leave less time for logic and wires. With an illustrative 100 ps allowance, the available budget falls from 900 ps to 400 ps. A 700 ps logic and wire path passes the first budget and fails the second; actual corners and constraints determine the real numbers.</span>
+</p>
+
+
+<p>
+<span>Pipelining can shorten a logic path, but data, tags, byte enables and errors must remain aligned. Feedback may still limit the initiation interval. Check how often new work enters, not just maximum frequency. Memory macros may need banking or a different implementation to support the higher access rate.</span>
+</p>
+
+
+<p>
+<span>The fabric must supply and drain the faster engine. Related clocks need correct generated clock constraints and a compatible transfer scheme. Asynchronous clocks need a suitable crossing mechanism, such as an asynchronous FIFO. A frequency ratio of two does not establish a safe timing relationship.</span>
+</p>
+
+
+<p>
+<span>A faster local block cannot compensate for an unchanged 512 bit fabric running at 1 GHz. Check the rate at every conversion boundary, including memory access and completion handling. If the engine is regularly blocked at its output, increasing its clock can leave the system throughput almost unchanged.</span>
+</p>
+
+
+<p>
+<span>Eight pipeline stages at 1 GHz and sixteen at 2 GHz both give 8 ns of nominal beat latency. Throughput may double without making one beat finish sooner. Measure request acceptance to completion, including queueing and crossings. For small DMA requests, descriptor handling and notification can dominate the payload processing time.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-2">
+<span>What two engines really require</span>
+</h2>
+
+
+<p>
+<span>Two engines retain the local width and clock target, but add control state, dispatch and possibly result ordering. Independent descriptors or flows are natural candidates. A single dependency chain cannot keep both engines busy without changing the algorithm.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/bd4733e3b0be137f.jpg"/>
+ </figure>
+
+
+<p>
+<span>Keeping each ordered flow on one engine simplifies retirement. Splitting it across engines can require sequence tracking and a reorder buffer. A slow request may hold later results at the output. Monitor reorder occupancy and oldest completion wait time, not only engine utilization.</span>
+</p>
+
+
+<p>
+<span>Both engines need enough aggregate input and output bandwidth. Shared SRAM ports, memory banks and merge logic can become bottlenecks. If one engine sustains 48 GB/s and two sustain 80 GB/s, scaling efficiency is 80 ÷ 96, or 83.3%. The pair still misses the target. Before expanding further, check whether dispatch, buffers and memory can scale with compute.</span>
+</p>
+
+
+<p>
+<span>Inspect the two engine utilization counters separately. A high average can hide unequal work distribution, while a low average may come from an empty queue rather than slow execution. Software must expose enough independent requests. Increasing queue depth helps only until another shared resource or a dependency becomes the limiting factor.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-3">
+<span>Compare energy per useful operation</span>
+</h2>
+
+
+<pre><span>                   Dynamic power ≈ α × C × V² × f        </span></pre>
+
+
+<p>
+<span>α is switching activity, C is switched capacitance, V is voltage and f is frequency. Doubling frequency doubles this component if everything else stays constant. If voltage also rises from an assumed 0.75 V to 0.90 V, the factor is 2 × (0.90 ÷ 0.75)² = 2.88. This is a conditional example, not a process requirement. Added registers, sizing and routing change C; leakage is separate.</span>
+</p>
+
+
+<p>
+<span>Widening or replicating can also roughly double switched datapath capacitance under a simple lane replication model. Neither automatically saves energy per byte. Savings must come from lower voltage, better utilization, shared control or reduced data movement.</span>
+</p>
+
+
+<p>
+<span>Separate clock and data power. A wider registered bus adds clock sinks, higher frequency increases clock switching, and another engine adds clocked state. Constant data does not stop the clock tree. Gating an idle region reduces dynamic power but does not remove leakage.</span>
+</p>
+
+
+<pre><span>Energy per useful byte = average power ÷ useful bytes per second        </span></pre>
+
+
+<p>
+<span>For an independent illustrative power comparison, 14.4 W at 96 GB/s is 150 pJ per byte. A lower 12.8 W at 80 GB/s is 160 pJ per byte and misses the target. For compute, use completed operations instead of bytes. Use the same measurement boundary, including dispatch, buffering and crossings.</span>
+</p>
+
+
+<p>
+<span>For bursty traffic, integrate energy over the same arrival trace, including idle time and wakeup overhead. Gated engines may suit variable demand, while shared control may favour width. A faster compact engine remains a candidate if its voltage and timing costs are acceptable.</span>
+</p>
+
+
+<p>
+<span>Compare the candidates at the required service rate as well as at maximum load. Otherwise one may finish early and sit idle while another runs continuously, making average power alone misleading. State whether the power boundary includes memory and fabric. Keep this boundary identical when calculating energy per useful operation.</span>
+</p>
+
+
+<p>
+<span>Replication includes more than the data lanes. Account for duplicated state, local buffers and any shared dispatcher or reorder logic. Widening may share control but increase register and routing load. Frequency may preserve logical width yet need extra pipeline stages or larger cells. These implementation costs determine whether the simple switching model remains useful.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-4">
+<span>Check wires and memory before choosing</span>
+</h2>
+
+
+<p>
+<span>If wire delay dominates, start with placement. A wide bus through congestion can be difficult to route, while a faster clock gives long wires less time. Two local engines help only when buffers and data are also local. Central dispatch or merging can recreate the same problem.</span>
+</p>
+
+
+<p>
+<span>Ask for cell versus net delay, fanout, buffer count, congestion and clock insertion results. Test pipelining for logic dominated paths and placement, banking or registered boundaries for long routes. Compare routed timing and area, not synthesis alone.</span>
+</p>
+
+
+<p>
+<span>Convert memory demand into useful payload units. One DRAM read and one DRAM write per payload byte require at least 192 GB/s of memory data traffic for 96 GB/s of useful throughput. Metadata and inefficient accesses add demand.</span>
+</p>
+
+
+<p>
+<span>A 96 GB/s read stream with 200 ns average latency needs about 19200 bytes in flight. Keeping 256 useful bytes per request, the average is 75 requests, requiring at least 75 request slots in this simplified model. Allow for latency variation and implementation limits. This is not a FIFO depth formula.</span>
+</p>
+
+
+<p>
+<span>Replay identical sizes, alignments, dependencies and bursts. Record useful bytes, accepted transfers, source starvation, downstream stalls and queue occupancy. Measure median and tail completion latency across queue depths. Compare physical trials at common technology and corner assumptions, including clock power, data power, leakage and routing demand. Verify ordering, back pressure and crossings before selection.</span>
+</p>
+
+
+<p>
+<span>For a realistic workload, record both the average rate and intervals where queues build up. A design that just meets average throughput may still miss a completion deadline during bursts. This is why the 97.92 GB/s example needs a headroom discussion even though it exceeds the 96 GB/s target.</span>
+</p>
+
+
+<p>
+<span>For each physical trial, retain the voltage, clock constraints, memory configuration and activity trace with the report. Include buffers inserted for timing and the clock network in the area and power comparison. The useful result is a reproducible operating point that meets the requirement, not simply the highest frequency reported by synthesis.</span>
+</p>
+
+<hr/>
+
+<h2 id="section-5">
+<span>A practical guide for early SoC architecture</span>
+</h2>
+
+
+<p>
+<span>Without placement or routing results, select a provisional architecture. Record why it matches the workload and which physical assumptions remain open. Do not treat an unknown clock limit, route capacity or power estimate as a passed check.</span>
+</p>
+
+
+<p>
+<span>First establish useful throughput, completion latency and source and destination limits. For 96 GB/s from a nominal 128 GB/s design, combined transfer utilization and useful byte occupancy must reach 75%. Model packing, stalls, dependencies and arbitration. A narrow interface limited to 64 GB/s rules out a sustained 96 GB/s path regardless of the engine choice.</span>
+</p>
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/7f4e868c66960678.jpg"/>
+ </figure>
+
+
+<p>
+<span>Use comparable blocks, IP limits and memory models, recording process, voltage and corner differences. Prefer supported assumptions and retain an alternative. If a critical unknown prevents selection, leave the decision open.</span>
+</p>
+
+<hr/>
+
+<p>
+<span>If your datapath needed twice the throughput, would you choose a wider bus, a higher clock frequency or two parallel engines? Which constraint would drive your decision: power, timing closure, routing or memory bandwidth? Share your experience in the comments. I would be interested to hear what worked in practice and what changed your initial choice.</span>
+</p>
+
+
+<p>
+<br/>
+</p>
+</article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../../pcie/">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
