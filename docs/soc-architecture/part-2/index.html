@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Timing Fails: Should You Add Another Pipeline Stage? | SoC PPALS</title><meta content="SoC Architecture and PPALS Part 2: Timing Fails: Should You Add Another Pipeline Stage?" name="description"/><meta content="#102d31" name="theme-color"/><meta content="Timing Fails: Should You Add Another Pipeline Stage?" property="og:title"/><meta content="SoC Architecture and PPALS Part 2: Timing Fails: Should You Add Another Pipeline Stage?" property="og:description"/><link href="../../favicon.svg" rel="icon" type="image/svg+xml"/><link href="../../style.css" rel="stylesheet"/><script defer="" src="../../site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="header"><a aria-label="SoC PPALS home" class="brand" href="../../"><span class="brandmark">▦</span><span>SoC <b>PPALS</b><small>ARCHITECTURE · SYSTEMS · TRADE OFFS</small></span></a><button aria-controls="nav" aria-expanded="false" class="menutoggle">Menu</button><nav aria-label="Main navigation" id="nav"><a href="../../">Home</a><a aria-current="page" href="../">SoC Architecture</a><a href="../../width-vs-frequency/">Interactive lab</a><a href="../../pcie/">PCIe series</a><a href="../../about/">About</a></nav></header><main id="main"><section class="articleintro"><a class="breadcrumb" href="../">← SoC Architecture</a><p class="eyebrow">SoC Architecture / PART 2</p><h1>Timing Fails: Should You Add Another Pipeline Stage?</h1><div class="articlemeta"><span class="avatar">SG</span><span>By Srinivas Gaddam</span><span>Full published article</span><button class="copylink">Copy link</button></div></section><div class="restored-layout"><aside class="restored-toc"><b>IN THIS ARTICLE</b><a href="#section-0">
+Closing Timing Without Losing System Performance
+</a><a href="#section-1">
+The contract and the DMA boundary
+</a><a href="#section-2">
+A wider window does not require a faster output clock
+</a><a href="#section-3">
+Find the timing problem before adding depth
+</a><a href="#section-4">
+Four options under the same requirements
+</a><a href="#section-5">
+What the architecture review must preserve
+</a><a href="#section-6">
+Check dependencies and system behavior
+</a><a href="#section-7">
+Compare options and make the decision
+</a></aside><article class="restored-article"><p class="source-note">Originally published on LinkedIn. <a href="https://www.linkedin.com/pulse/timing-fails-should-you-add-another-pipeline-stage-srinivas-gaddam-xifkf/">View original article ↗</a></p><figure><img alt="Timing Fails: Should You Add Another Pipeline Stage?" decoding="async" src="../../article-images/soc-part2-cover.png"/></figure><div class="published-body">
+
+
+<h2 id="section-0">
+<span>Closing Timing Without Losing System Performance</span>
+</h2>
+
+
+
+<p>
+<span>A 512-bit DMA alignment datapath targets 1.5 GHz and one operation per cycle, but its critical stage needs a period 15 percent above target. One extra latency cycle is allowed. Should we add a stage, rebalance registers, restructure logic, or simplify functionality? The decision must preserve throughput, correctness, and the power, area, and latency budgets.</span>
+</p>
+
+
+
+<h2 id="section-1">
+<span>The contract and the DMA boundary</span>
+</h2>
+
+
+
+<p>
+<span>The alignment block sits between a DMA data buffer and an internal fabric. For each accepted operation, upstream logic supplies a complete 128 byte (1024 bit) selection window, offset, and metadata. The block selects 64 consecutive bytes (512 bits) at any offset from 0 to 63. Window assembly and its supply bandwidth are upstream assumptions.</span>
+</p>
+
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/soc-part2-figure-1.png"/>
+ </figure>
+
+
+
+<p>
+<span>Accept one operation per cycle when input and output are available; preserve order and retain all accepted work under backpressure. Unstalled latency is measured from acceptance of a complete window and descriptor to output acceptance: edge 0 to edge 3 initially, at most edge 4 after modification. Memory access and window assembly are outside that boundary. Cancellation is permitted only before the final output offer.</span>
+</p>
+
+
+<hr/>
+
+
+<h2 id="section-2">
+<span>A wider window does not require a faster output clock</span>
+</h2>
+
+
+
+<p>
+<span>At offset 13, select window bytes 13 through 76. In a sequential stream of 64 byte words A, B, C, output 0 combines the last 51 bytes of A with the first 13 of B; output 1 uses the last 51 of B and first 13 of C. Reusing B allows one new 512 bit word per cycle after startup. Boundaries, short transfers, and stalls can reduce throughput.</span>
+</p>
+
+
+
+<p>
+<span>Independent descriptors need not share windows. Fresh 128 byte windows every cycle require 192 GB/s of internal supply, although selected output is only 64 bytes × 1.5 GHz = 96 GB/s. External memory traffic depends on reuse and caching. Buffer ports and assembly logic must sustain the assumed rate; a FIFO cannot fix a sustained deficit.</span>
+</p>
+
+
+
+<p>
+<span>The entire alignment pipeline uses 1.5 GHz, including 1024 bit window and 512 bit result registers. By contrast, a lossless 1024 to 512 converter must forward two output beats per input: sustaining 1024 new bits/cycle at 1.5 GHz requires 512 bits/cycle at 3 GHz, or input acceptance every two cycles at equal clocks and utilization. This aligner selects bytes rather than forwarding every window byte.</span>
+</p>
+
+
+<hr/>
+
+
+<h2 id="section-3">
+<span>Find the timing problem before adding depth</span>
+</h2>
+
+
+
+<p>
+<span>At 1.5 GHz, each pipeline stage has a timing budget of 666.7 ps. The critical stage requires 766.7 ps, exceeding that budget by 100 ps, or 15%. Without improving the implementation, this limits the clock frequency to approximately 1.304 GHz. All values below include register and clock allowance, rather than pure combinational delay, and are illustrative rather than measured IP results.</span>
+</p>
+
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/soc-part2-figure-2.png"/>
+ </figure>
+
+
+
+<p>
+<span>Inspect startpoint, endpoint, cell and net delays, and control arrival. Serial logic suggests splitting or restructuring; late controls suggest earlier decode; wire delay and fanout require physical partitioning and placement work. Spare S1/S3 budgets cannot simply be added to S2: moving work changes dependencies, wiring, and stored state.</span>
+</p>
+
+
+
+<p>
+<span>Here, descriptor and offset are available in S1, but controls resolve in S2 before selection, alignment, and validity completion. The descriptor also permits output mask generation independently of data values. Ask whether decode can move earlier, mask logic can run in parallel, unnecessary priority can be removed, and final validity can move toward S3. Count the state at each proposed cut.</span>
+</p>
+
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/soc-part2-figure-3.png"/>
+ </figure>
+
+
+
+<p>
+<span>Compare all the options using the same cell library, corners, uncertainty, interface constraints, and physical assumptions. Early synthesis timing is not routed closure.</span>
+</p>
+
+
+<hr/>
+
+
+<h2 id="section-4">
+<span>Four options under the same requirements</span>
+</h2>
+
+
+
+<h3><span>1 Add a fourth stage</span></h3>
+
+
+
+<p>
+<span>Split alignment from final validity processing. Carry data, byte validity, transaction identity, and required cancellation and stall state together. Every field must advance, hold, and invalidate with its operation. A data only cut is incomplete.</span>
+</p>
+
+
+
+<p>
+<span>With 64 metadata bits and one entry valid bit, a cut after selection stores 512 + 64 + 64 + 1 = 641 bits. Retaining the full window stores 1024 + 128 + 64 + 1 = 1217 bits, or 576 more. These inventories assume one validity bit per byte and exclude additional decode, cancellation tags, flow control, and reserve storage. Count any other crossing controls; bit counts are not technology independent area or power estimates.</span>
+</p>
+
+
+
+<p>
+<span>Choose another stage only if it interrupts the actual critical cone and delivers enough physical timing margin within latency, clock load, state, and power budgets. A register after the entire slow cone does not divide it.</span>
+</p>
+
+
+
+<h3><span>2 Retime or rebalance the existing stages</span></h3>
+
+
+
+<p>
+<span>Move control preparation toward S1 and final validity toward S3, leaving selection and alignment in S2. Automatic retiming is constrained by equivalence and tool settings; architectural rebalancing may require RTL changes. Verify cycle relationships, reset, enables, transaction association, bubbles, and stalls.</span>
+</p>
+
+
+
+<p>
+<span>Preserving three cycles does not guarantee the same register count: boundary widths and register replication can change. Neighboring stages must absorb the moved work without creating timing or control fanout problems. Delays must be remeasured after movement.</span>
+</p>
+
+
+
+<h3><span>3 Restructure the logic</span></h3>
+
+
+
+<p>
+<span>Prepare controls earlier and compute the mask alongside alignment, then combine matching results at a boundary. This is legal here because mask calculation does not depend on selected data values. For valid input W[0…127] and offset 13, output byte j = W[13+j], j = 0…63. With 48 valid output bytes, validity bits 0…47 are set and the remaining 16 are clear. Data and mask must stay associated through every stall.</span>
+</p>
+
+
+
+<p>
+<span>Remove priority only after proving alternatives mutually exclusive or defining overlap behavior. Flatter RTL does not guarantee faster hardware: parallel logic may increase routing, fanout, or area. Check mapped timing and equivalence for every legal offset and descriptor mode.</span>
+</p>
+
+
+
+<h3><span>4 Simplify functionality</span></h3>
+
+
+
+<p>
+<span>Supporting only offsets 0, 16, 32, and 48 can reduce selection work, but violates the original any byte offset contract. Reject it unless the product explicitly accepts the restriction. Include any upstream realignment, software copying, buffer layout constraints, and resulting bandwidth, latency, and compatibility cost.</span>
+</p>
+
+
+<hr/>
+
+
+<h2 id="section-5">
+<span>What the architecture review must preserve</span>
+</h2>
+
+
+
+<p>
+<span>The same accepted operation must produce the same selected bytes, validity, and identity, in order, under all legal stalls and cancellations. A timing gain is useful only if the revised stage boundaries and logic preserve that behavior. Start by restructuring and balancing; retain another stage as a measured fallback, not an automatic solution.</span>
+</p>
+
+
+
+<h2 id="section-6">
+<span>Check dependencies and system behavior</span>
+</h2>
+
+
+
+<h3><span>Latency is not initiation interval</span></h3>
+
+
+
+<p>
+<span>Independent operations with available windows can still launch every cycle in a four-stage pipeline. Independence does not prove window reuse or sufficient upstream bandwidth. If the next offset depends on the previous result, moving its availability from three to four cycles can increase the initiation interval from three to four. Forwarding or earlier state updates may restore overlap, but add selection, wiring, timing paths, and recovery rules for canceled work.</span>
+</p>
+
+
+
+<h3><span>Backpressure requires reserved capacity</span></h3>
+
+
+
+<p>
+<span>In this example, </span><span>A, B, C, D, E, and so on represent separate operations in their arrival order</span><span>. Each operation includes its data, byte validity, and transaction metadata. </span><span>S1, S2, and S3</span><span> are the three processing stages. The </span><span>reserve slot</span><span> is an extra storage location before S1 that temporarily holds an accepted operation when S1 cannot advance. In the globally held pipeline below, the source observes a stop one edge late. E is still accepted while B, C, and D remain held, so an initially empty ingress reserve slot captures E. Registering the stop signal without that capacity can lose accepted work.</span>
+</p>
+
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/soc-part2-figure-4.png"/>
+ </figure>
+
+
+
+<p>
+<span>With at most one acceptance per edge, two further accepting edges and no departures require two initially free slots. This is an occupancy bound, not a universal FIFO rule. Trace stops detection, admission changes, and already permitted arrivals independently of forward latency. Registered stream slices illustrate the timing versus buffering tradeoff.</span>
+</p>
+
+
+
+<h3><span>Cancellation and variable latency</span></h3>
+
+
+
+<p>
+<span>The first offer with output valid in the final stage is the commit point. Cancellation wins over entry at the same edge; afterward the offered operation must remain stable until accepted. Clearing internal valid cannot retract accepted output. Track identity through movement, prolonged stalls, and simultaneous admission. If fast and slow paths coexist, preserve order by holding later results where needed; size queues for bursts, not only average traffic.</span>
+</p>
+
+
+
+<h3><span>Practice check</span></h3>
+
+
+
+<p>
+<span>For the four-stage design, suppose two more full windows can arrive after a stop, with no departures. Each reserve slot holds 1024 data + 128 validity + 64 metadata + 1 valid = 1217 bits. Two free slots require 2434 bits, separate from added pipeline state and control overhead.</span>
+</p>
+
+
+
+<p>
+<span>Four cycles at 1.5 GHz equal 2.667 ns. Independent operations retain 96 GB/s peak. If the next offset becomes available only at previous output acceptance, with no forwarding and earliest same edge reuse, initiation interval is at least four: 375 million operations/s or 24 GB/s. Preparation delays and stalls lower it further. Reserve storage protects work; it does not remove a dependency.</span>
+</p>
+
+
+<hr/>
+
+
+<h2 id="section-7">
+<span>Compare options and make the decision</span>
+</h2>
+
+
+
+<p>
+<span>These are illustrative candidate outcomes, not synthesis results. Margin is 666.7 ps minus worst required period. Require 40 ps residual margin beyond allowances already included; a real project must set its own criterion.</span>
+</p>
+
+
+
+<figure>
+<img alt="Article content" decoding="async" loading="lazy" src="../../article-images/soc-part2-figure-5.png"/>
+ </figure>
+
+
+
+<p>
+<span>Select restructuring provisionally: 56.7 ps margin preserves three cycles and exceeds the 40 ps criterion. Rebalancing alone gives only 26.7 ps. The fourth stage offers 116.7 ps and is the fallback if physical results require more margin within the state and power budgets. Verify logic and boundary equivalence, stalls, cancellation, and physical and power results before accepting any option.</span>
+</p>
+
+
+
+<p>
+<span>At fixed 1.5 GHz, every compliant initiation interval one candidate has the same 96 GB/s peak useful output. Higher achievable maximum frequency alone does not improve throughput at the chosen operating clock. This comparison is conditional, not proof of minimum cost.</span>
+</p>
+
+
+
+<p>
+<span>For the next review: define the full contract and supply bandwidth; locate serial, control, and wire delay; identify recurrences; assess rebalancing and restructuring; count added state, clock load, reserve, and cancellation cost; compare under identical conditions; choose the lowest demonstrated cost that meets the contract and record reconsideration conditions.</span>
+</p>
+
+
+<hr/>
+
+
+<p>
+<span>If another stage fixes timing but adds a cycle to a feedback loop, have we improved the architecture, or only the timing report?</span>
+</p>
+
+ </div></article></div></main><footer><div><a class="brand" href="../../">SoC <b>PPALS</b></a><p>Architecture decisions, explained through real engineering questions.</p><small>© 2026 Srinivas Gaddam. Personal technical writing.<br/>Views expressed here are personal and do not represent an employer.</small></div><div class="footlinks"><a href="../">SoC Architecture</a><a href="../../width-vs-frequency/">Width vs Frequency</a><a href="../../pcie/">PCIe Gen6 / Gen7</a><a href="https://www.linkedin.com/in/srinivas-gaddam-78429815/">Connect on LinkedIn ↗</a></div></footer></body></html>
