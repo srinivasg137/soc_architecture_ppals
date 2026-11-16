@@ -11,5 +11,5 @@ export default defineConfig({
   plugins:[react()],
   resolve:{alias:{'@':root}},
   css:{postcss:root},
-  build:{outDir:fileURLToPath(new URL('./docs',import.meta.url)),emptyOutDir:true},
+  build:{outDir:fileURLToPath(new URL('./docs/lab-app',import.meta.url)),emptyOutDir:true},
 });

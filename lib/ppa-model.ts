@@ -1,7 +1,7 @@
 export const ARCHITECTURES = [
-  {id:'wide',code:'A',name:'Wider datapath',short:'512-bit · 1 GHz',width:512,frequency:1,engines:1,color:'#4c5cde'},
-  {id:'fast',code:'B',name:'Higher frequency',short:'256-bit · 2 GHz',width:256,frequency:2,engines:1,color:'#078a84'},
-  {id:'parallel',code:'C',name:'Parallel engines',short:'2 × 256-bit · 1 GHz',width:256,frequency:1,engines:2,color:'#bd650e'}
+  {id:'wide',code:'A',name:'Wider datapath',short:'1024-bit · 1 GHz',width:1024,frequency:1,engines:1,color:'#4c5cde'},
+  {id:'fast',code:'B',name:'Higher frequency',short:'512-bit · 2 GHz',width:512,frequency:2,engines:1,color:'#078a84'},
+  {id:'parallel',code:'C',name:'Parallel engines',short:'2 × 512-bit · 1 GHz',width:512,frequency:1,engines:2,color:'#bd650e'}
 ] as const;
 export type ArchId = typeof ARCHITECTURES[number]['id'];
 export type Assumption = {overhead:number;bubbles:number;utilization:number;parallelEfficiency:number;power:number;area:number;timingRisk:number;routing:number;scalability:number;uncertainty:number;clockShortfall:number;trial:boolean;achievedFrequency:number;source:string};
@@ -24,7 +24,7 @@ export const referenceTransportAreaMm2=()=>AREA_REFERENCE.totalNocMm2/AREA_REFER
 export const STARTER_AREA_MM2=0.15; // Rounded scale-only estimate; equal for A/B/C.
 export const STARTER_AREA_BUDGET_MM2=0.20; // Editable logic-area allowance, not a published limit.
 const initial=(power:number,area:number,timingRisk:number,routing:number,scalability:number):Assumption=>({overhead:10,bubbles:5,utilization:80,parallelEfficiency:90,power,area,timingRisk,routing,scalability,uncertainty:25,clockShortfall:10,trial:false,achievedFrequency:1,source:''});
-export const makeDefaults=():State=>({architectures:{wide:initial(STARTER_POWER_W,STARTER_AREA_MM2,3,4,3),fast:{...initial(STARTER_POWER_W,STARTER_AREA_MM2,5,2,2),achievedFrequency:2},parallel:initial(STARTER_POWER_W,STARTER_AREA_MM2,2,3,4)},target:40,powerBudget:STARTER_POWER_BUDGET_W,areaBudget:STARTER_AREA_BUDGET_MM2,cap:80,capEnabled:true,baseline:'wide',tab:'overview'});
+export const makeDefaults=():State=>({architectures:{wide:initial(STARTER_POWER_W,STARTER_AREA_MM2,3,4,3),fast:{...initial(STARTER_POWER_W,STARTER_AREA_MM2,5,2,2),achievedFrequency:2},parallel:initial(STARTER_POWER_W,STARTER_AREA_MM2,2,3,4)},target:96,powerBudget:STARTER_POWER_BUDGET_W,areaBudget:STARTER_AREA_BUDGET_MM2,cap:160,capEnabled:true,baseline:'wide',tab:'overview'});
 export const bounds:Record<Exclude<keyof Assumption,'trial'|'source'>,[number,number]>={overhead:[0,100],bubbles:[0,100],utilization:[0,100],parallelEfficiency:[0,100],power:[0.000001,100000],area:[0.001,100000],timingRisk:[1,5],routing:[1,5],scalability:[1,5],uncertainty:[0,95],clockShortfall:[0,100],achievedFrequency:[0.01,20]};
 export type Action={type:'arch';id:ArchId;key:keyof Assumption;value:number|boolean|string}|{type:'shared';key:'overhead'|'bubbles'|'utilization';value:number}|{type:'global';key:'target'|'powerBudget'|'areaBudget'|'cap';value:number}|{type:'cap';value:boolean}|{type:'baseline';value:ArchId}|{type:'tab';value:string}|{type:'reset'};
 export function reducer(state:State,action:Action):State {
